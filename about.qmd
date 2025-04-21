@@ -1,5 +1,6 @@
 ---
 title: "Max Oosterwegel"
+comments: false
 image: profile.jpg
 about:
   template: solana
