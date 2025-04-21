@@ -15,6 +15,9 @@ website:
   site-url: https://maxoosterwegel.com
   repo-url: https://github.com/moosterwegel/quarto-website
   search: false
+  comments:
+    giscus:
+      repo: moosterwegel/quarto-website
   page-footer:
     center:
       - text: RSS feed
