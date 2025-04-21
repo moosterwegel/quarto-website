@@ -18,6 +18,7 @@ website:
   comments:
     giscus:
       repo: moosterwegel/quarto-website
+      category: Announcements
   page-footer:
     center:
       - text: RSS feed
