@@ -1,0 +1,21 @@
+---
+title: "Imputing and removing technical variation in left censored metabolomic data"
+draft: true
+date: "2025-05-20"
+format: 
+  html: 
+      echo: true
+      message: false
+      warning: false
+      code-fold: false
+---
+
+The field of environmental epidemiology has made a big bet the last few years on metabolomic data to gain insight into exposure levels, biological mechanisms and their relationship to disease. We are now well into the realm of high-throughput studies using these data. This means that a study's samples cannot be processed in one batch anymore and analyses will run over longer periods. Longer periods means greater variation in technical, non-biological factors that  affect the data and this will introduce additional unwanted technical variation. As shown in another blog post this data is also often left censored. In this blog post I will show you how you can effectively impute and adjust this data in one and the same model.
+
+“However, when we break the matching and compare a case with all subjects at risk, the variation between batches can be problematic.” (Støer and Samuelsen, 2013, p. 5336)
+
+# Technical variation in untargeted/nontargeted metabolomics
+
+# The status quo of imputation and technical variation adjustment 
+
+# brms model

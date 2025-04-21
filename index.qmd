@@ -1,0 +1,16 @@
+---
+listing:
+  contents: posts
+  template: blogs_listing.ejs
+  sort: "date desc"
+  # type: table
+  feed: true
+  fields: [title, date]
+  date-format: long
+  categories: false
+  sort-ui: false
+  filter-ui: false
+title-block-banner: false
+title-block-style: none
+title: ""
+---

@@ -1,0 +1,45 @@
+<table style="width: 100%; border-collapse: collapse;">
+  <thead>
+    <tr style="font-size: 0; line-height: 0; height: 0; visibility: hidden;">
+      <th style="padding: 0; border-bottom: 1px solid #000; width: 10%;">Year</th>
+      <th style="padding: 0; border-bottom: 1px solid #000; width: 75%;">Title</th>
+      <th style="padding: 0; border-bottom: 1px solid #000; width: 15%;">Month & Day</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% let previousYear = ""; %>
+    <% for (let i = 0; i < items.length; i++) { %>
+      <% 
+        const item = items[i];
+        // Split the date at the comma
+        const dateParts = item.date.split(',');
+        const monthDay = dateParts[0].trim(); // "March 7"
+        const year = dateParts[1] ? dateParts[1].trim() : ""; // "2005"
+        
+        // Determine if we should display the year
+        const displayYear = year !== previousYear ? year : "";
+        
+        // Look ahead to see if the next item has a different year
+        const nextItem = i < items.length - 1 ? items[i + 1] : null;
+        let nextYear = "";
+        if (nextItem) {
+          const nextDateParts = nextItem.date.split(',');
+          nextYear = nextDateParts[1] ? nextDateParts[1].trim() : "";
+        }
+        
+        // Show border only if this is NOT the last item overall AND it's the last item of a year group
+        const showBorder = (i !== items.length - 1 && year !== nextYear) ? "1px solid #ddd" : "none";
+        
+        // Update the previous year for the next iteration
+        previousYear = year;
+      %>
+      <tr>
+        <td style="text-align: left; padding: 8px; border-bottom: <%= showBorder %>; font-size: 1.2em; font-weight: bold;"><%= displayYear %></td>
+        <td style="text-align: left; padding: 8px; border-bottom: <%= showBorder %>;">
+          <a href="<%- item.path %>"><%= item.title %></a>
+        </td>
+        <td style="text-align: right; padding: 8px; border-bottom: <%= showBorder %>;"><%= monthDay %></td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>

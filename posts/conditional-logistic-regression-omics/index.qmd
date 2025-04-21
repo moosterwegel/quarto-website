@@ -1,0 +1,81 @@
+---
+title: "The superiority of conditional logistic regression in (metabol)omic matched case-control studies"
+draft: true
+date: "2025-06-20"
+format: 
+  html: 
+      echo: true
+      message: false
+      warning: false
+      code-fold: true
+---
+
+Conditional logistic regression[^1] is a classic tool in an epidemiologist's toolkit. It's usually used to analyse matched case-control studies. However, popular guidance has advocated to 'break' the matching and analyse such studies using a ordinary logistic model for small efficiency gains. In this blog posts I want to demonstrate the clear superiority of conditional logistic regression in well-designed matched case-control studies of omic data that contain a substantial amount of technical variation.
+
+[^1]: In other fields also known as the hypergeomtric test, or '[as an estimator of the FE LR model](https://x.com/noah_greifer/status/1565747391734628353)'.
+
+"conditional logistic regression. In this model, all cluster-constant covariates are absorbed into a cluster-specific intercept, whereas cluster-varying covariates are adjusted for by explicitly adding these as explanatory variables to the model."
+-  https://doi.org/10.1002/sim.8332 
+
+"The key is that the CLR conditions out any factors constant within the matched pair (the stratum), and by making the assay batch/plate the randomization block for the pair, technical variation associated with that batch/plate gets conditioned out too."
+
+# The example study
+
+Consider the following study. Cases are 1:1 matched to controls (on some covariates) and the case-control pairs are block randomized over the analytical assay. In other words, the matched pairs (blocks) will be randomized over the plates and batches and within the block we randomize whether the position of the case and control. In visual form:
+
+```{r}
+
+library(ggplate)
+library(ggplot2)
+
+data(data_continuous_96)
+
+block_possibilities <- list(c(0, 1), c(1, 0))
+
+data_continuous_96 <- data_continuous_96 |> 
+  dplyr::mutate(case = as.character(unlist(sample(block_possibilities, 48, replace = TRUE))),
+                case = ifelse(case == '1', 'Case', 'Control'),
+                pair = rep(sample(1:48), each = 2),
+                x = rnorm(96))
+
+ggplate::plate_plot(
+  data = data_continuous_96,
+  position = well,
+  value = case,
+  label = pair,
+  colour = c('skyblue', 'orange'),
+  plate_size = 96,
+  plate_type = "round",
+  title = "") +
+  labs(title = "") +
+  theme(legend.title = element_blank())
+
+# add plate background
+```
+
+# Conditional logistic regression
+
+The most important difference between conditional logistic regression and ordinary logistic regression here is that in a conditional logistic regression only disconcordant pairs contribute to the analysis. Stratum-level unobserved variables are adjusted away.
+
+math
+
+In `R` you can easily fit a conditional logistic regression using the `clogit` function from the `surival` package[^2].
+
+[^2]: Apparently you can also fit a conditional logistic regression model [using a random effect model!](https://www.metafor-project.org/doku.php/tips:clogit_paired_binary_data) (in some cases (?))
+
+```{r}
+#| evaluate: false
+library(survival)
+survival::clogit(is_case ~ 1 + survival::strata(pair) + x, 
+                 data = data_continuous_96 |> dplyr::mutate(is_case = case == "Case"))
+```
+
+# Technical variation
+
+## Adjustment
+
+No matter how extensive we model this drift and remove this variation, the remaining variation will be greater than the technical drift over one position in the data. And the latter is precisely the variation that the conditional logistic regression will utilize in our well designed example study. The unobserved stratum-level variables is the technical drift here (?).
+
+# Caveats
+
+Maybe conditional on total total amount of variation in study.

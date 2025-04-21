@@ -1,0 +1,105 @@
+---
+title: "Some small recurring data wrangling patterns of mine"
+draft: true
+date: "2025-07-20"
+execute:
+  echo: false
+  message: false
+  warning: false
+  code-fold: true
+---
+
+I've had the fortune to wrangle a lot of data during my PhD and I thought I would write down some of the recurring patterns in my workflows. This blog posts is mainly meant for colleagues but perhaps it will be useful to a wider audience. 
+
+# To map, map-map, or to nest map?
+Often I have to fit the same model to thousands of metabolomic features. You could of course just write a for-loop, but my problems are often embarrassingly parallel and if I use furrr::future_map (or purrr::map these days)[https://purrr.tidyverse.org/dev/reference/parallelization.html] it's trivial to parallize the code. 
+
+```{r}
+gen_names <- function(n = 1) {
+  mz <- runif(min = 10, max = 200, n = n) |> signif(7)
+  rt <- runif(min = 0, max = 12, n = n) |> signif(7)
+  string <- glue::glue("X{mz}_{rt}")
+  return(string)
+}
+
+gen_x <- function(dummy, nr_imputations = 60, n = 1000) {
+  x <- replicate(nr_imputations, rnorm(n)) |> tibble::as_tibble() 
+}
+
+list_of_feature_dfs <- gen_names(256) |> 
+  tibble::as_tibble() |> 
+  tidyr::pivot_wider(names_from = value) |> 
+  purrr::map(gen_x) 
+
+cohorts <- stringi::stri_rand_strings(3, 2, '[A-Z]')
+
+df <- tibble::tibble(y = rbinom(1000, 1, 0.5), 
+                     z = rnorm(1000, 0, 1), 
+                     q = rbinom(1000, 1, 0.2), 
+                     weights = 1, 
+                     cohort = cohorts[sample.int(3, 1000, replace = TRUE)])
+```
+
+```{r}
+#| eval: false
+map(big_function_you_apply_to_all_variables)
+```
+
+```{r}
+#| eval: false
+map(function_1_you_apply_to_all_variables) |> 
+  map(function_n_you_apply_to_all_variables) 
+```
+
+```{r}
+#| eval: false
+nest() |> 
+  map()
+```
+This often involves converting the data to long format first. I think this is very elegant and transparent, but I have run into memory issues on the virtual research environments we are often required to use. Fitting tens of thousands of models and keeping both the models and data constantly into memory for all your analyses adds up! 
+
+I'm also a bit worried about the readability for people who are not used to this pattern. The goal of sharing code and by extension of writing good code, is documentation, reproducibility and demonstration. We mainly need code that's easy to understand for non-experts. So perhaps we need to optimize for readability for non coding 'experts' and not for aesthetics. 
+
+I have a similar feeling about make files and target pipelines. It's fantastic for reproducibility -- it's only one line of code away now -- but many colleagues -- whether we like it or not -- now have more trouble in verifying the code's correctness. Maybe AI will make this substantially easier, I don't know, but for now I'm afraid these pipelines obscure rather than ... . If the data is also openly available this may be another story. 
+
+()[https://x.com/carlislerainey/status/1750902519868637583]
+
+
+# Nest, pull, walk
+```{r}
+#| eval: false
+df |> 
+  nest() |> 
+  pull(data, name = 'source') |> 
+  walk()
+```
+
+# `pivot_wider values_fn map(unlist)
+```{r}
+#| eval: false
+pivot_wider(names_from = class, values_from = id, values_fn = list) |>
+  map(unlist)
+```
+Get a list with lists of the members per class
+
+# Expand grid pmap for simulations
+```{r}
+#| eval: false
+do_nr_times <- function(nr, ...) {
+  result <- map_dfr(
+    1:nr,
+    ~simulate_data_and_analysis(...),
+    .id = 'sim_nr')
+}
+
+experimental_conditions |> 
+  pmap()
+
+furrr::future_pmap(experimental_conditions, 
+                   \(nr, ...)
+                   do_nr_times(nr, ...), 
+                   .progress = TRUE, 
+                   .options = furrr::furrr_options(seed = seed, prefix = "prefix")) |>
+  bind_rows()
+```
+

@@ -1,0 +1,15 @@
+{
+  "hash": "fe2001737a4514afe965c209551436b7",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"Fitting left-censored models with R\"\nauthor: \"Max Oosterwegel\"\ndate: \"2025-03-22\"\ncategories: [blogs]\n---\n\n\n\n\nLeft-censored models frequently show up in environmental epidemioly. Think .... [refs]\n\nA variety of packages offer functionality to fit these models. This blog post is a simple collection of these. \n\n\n\n\n::: {.cell}\n\n:::\n\n\n\n\n\n## Going multilevel\n\nIf you want to go multilevel, it becomes harder. You o\n\n\nThere's also a great CRAN task view by Ben Bolker with some information. It looks like glmmTB will support left-censored models in the near future too. ",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

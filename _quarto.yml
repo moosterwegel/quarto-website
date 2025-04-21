@@ -1,0 +1,63 @@
+project:
+  type: website
+#  output-dir: _site
+  output-dir: docs
+  preview:
+    port: 4200
+    browser: false
+    
+resources:
+  - fonts
+
+website:
+  title: "Max Oosterwegel -- blog ( ._.)"
+  description: "Blog Max Oosterwegel ( ._.)"
+  site-url: https://maxoosterwegel.com
+  repo-url: https://github.com/moosterwegel/quarto-website
+  search: false
+  page-footer:
+    center:
+      - text: RSS feed
+        href: index.xml
+      - text: tepific-torpible-rigible-lucible-candible-honey-842240751607453
+      - text: © 2025 Max Oosterwegel
+  navbar:
+    title: false
+    background: "#FFFFFF"
+    foreground: "dark"
+    left:
+      - text: "home"
+        href: index.qmd
+     # - text: "teaching" 
+      - text: "paper roll"
+      - text: "about"
+        href: about.qmd
+    right:
+      # - icon: rss
+      #   href: index.xml
+      - icon: bi-envelope-at-fill
+        href: mailto:max[dot]oosterwegel[at-sign]gmail[dot]com
+      - icon: twitter
+        href: https://twitter.com/oostermax
+      - icon: bluesky
+      # see https://github.com/quarto-ext/fontawesome
+      - text: '{{< fa brands bluesky size=sm >}}'
+        href: https://bsky.app/profile/oostermax.bsky.social
+      # - text: '{{< ai orcid size=sm >}}'
+      #   href: https://orcid.org/0000-0003-3991-2632
+      # - icon: linkedin
+      #   href: https://www.linkedin.com/in/max-oosterwegel/ 
+      # see https://github.com/schochastics/academicons
+      # - text: '{{< ai google-scholar size=lg >}}'
+      #   href: https://scholar.google.com/citations?user=76pPLxkAAAAJ&hl=en
+      - icon: github
+        href: https://github.com/moosterwegel
+format:
+  html:
+    theme: [custom.scss, cosmo]
+    highlight-style: monokai
+    linkcolor: black
+    include-after-body: traffic.html
+    fig-format: png
+    fig-dpi: 600
+    fig-retina: 2

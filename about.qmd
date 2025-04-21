@@ -1,0 +1,8 @@
+---
+title: "Max Oosterwegel"
+image: profile.jpg
+about:
+  template: solana
+---
+
+I am a PhD student in environmental epidemiology at The Institute for Risk Assessment Sciences at Utrecht University. In this PhD I work with untargeted / nontargeted metabolomic data to study respiratory health outcomes (think asthma, COPD, lung function) across the life course. This PhD is financed by the EXPANSE and EXPOSOME-NL consortia which are part of a broader effort to systematically characterize the environment and its exposures to humans on a large scale (dubbed the exposome). I originally did my bachelor's in artificial intelligence and a master in data science before pivoting to (environmental) epidemiology. 
