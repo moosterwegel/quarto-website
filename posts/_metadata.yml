@@ -11,3 +11,10 @@ author:
     url: https://maxoosterwegel.com/
     orcid: 0000-0003-3991-2632
 doi: placeholder
+
+format:
+  html:
+    comments:
+      giscus:
+        repo: moosterwegel/quarto-website
+        category: Announcements
