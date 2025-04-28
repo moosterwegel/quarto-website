@@ -17,6 +17,9 @@ Conditional logistic regression[^1] is a classic tool in an epidemiologist's too
 "conditional logistic regression. In this model, all cluster-constant covariates are absorbed into a cluster-specific intercept, whereas cluster-varying covariates are adjusted for by explicitly adding these as explanatory variables to the model."
 -  https://doi.org/10.1002/sim.8332 
 
+
+“However, when we break the matching and compare a case with all subjects at risk, the variation between batches can be problematic.” (Støer and Samuelsen, 2013, p. 5336)
+
 "The key is that the CLR conditions out any factors constant within the matched pair (the stratum), and by making the assay batch/plate the randomization block for the pair, technical variation associated with that batch/plate gets conditioned out too."
 
 # The example study
