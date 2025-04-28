@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/impute-and-remove-technical-variation-metabolomics/index.html",
       "/posts/left-censored-models-showcase/index.html"
     ]
   }

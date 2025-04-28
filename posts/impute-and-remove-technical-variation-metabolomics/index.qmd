@@ -1,6 +1,5 @@
 ---
 title: "Imputing and removing technical variation in left censored metabolomic data"
-draft: true
 date: "2025-04-28"
 format: 
   html: 
@@ -9,14 +8,21 @@ format:
       warning: false
       code-fold: false
 citation: true
+execute: 
+  cache: true
 bibliography: references.bib
 ---
 The field of environmental epidemiology has made significant investments in untargeted (also known as nontargeted)  metabolomics over the past few years, to gain deeper insights into exposure levels, biological mechanisms, and their relationship to disease.  These investments are starting to pay dividends by enabling larger studies, but this scale-up comes with its own challenges. With sample sizes growing substantially, processing all study samples in a single batch is no longer feasible, forcing analyses to span longer periods. These extended timeframes introduce greater variation in technical, non-biological factors that contaminate the data with unwanted variation. Additionally, as I've discussed in [a previous post](/posts/left-censored-models-showcase/), this metabolomic data is often left censored, creating further analytical challenges. In this post, I'll share a method I developed that handles both the imputation of nondetects and the removal of technical variation in one and the same model[^1].
 
-[^1]: If your research question is directly related to the exposure or metabolite level -- and not to its relationship as predictor to some outcome -- you do not have to impute of course if you fit a left censored model.
+[^1]: If your research question pertains directly to the exposure or metabolite level itself -- rather than its relationship as a predictor for an outcome -- then imputation is not necessary of course, because you can directly use the fitted left censored model.
 
 # Technical variation in untargeted/nontargeted metabolomics
 To illustrate the model, I will start with simulating some left censored data that contains batch and plate effects (an example of technical variation). In this model, the study samples are processed in (100-well) plates that are nested within the batches. A proportion of these values will be censored. The censoring point (limit of detection) will differ per batch:
+```{r}
+#| echo: false
+cmdstanr::set_cmdstan_path("C:/Users/Max/Documents/.cmdstan/cmdstan-2.34.1")
+```
+
 ```{r}
 n <- 2000
 samples_p_batch <- 400
@@ -48,7 +54,8 @@ df <- tibble::tibble(y, x,
                 log_lod = log(lod),
                 log_y = log(y),
                 log_y_obs = log(y_obs),
-                plate_id = as.factor(rep(1:(samples_p_batch/samples_p_plate), each = samples_p_plate))) |> 
+                plate_id = as.factor(rep(1:(samples_p_batch/samples_p_plate), 
+                                         each = samples_p_plate))) |> 
   dplyr::ungroup() |> 
   dplyr::mutate(inj_order = dplyr::row_number()) |> 
   tidyr::unite(plate_nested_coding, c(batch_id, plate_id), remove = FALSE) 
@@ -63,7 +70,7 @@ df <- tibble::tibble(y, x,
 <!-- #   theme_minimal() + -->
 <!-- #   theme(legend.position = 'top') -->
 <!-- # ``` -->
-The plot illustrates the technical variation (the different colors correspond to different batches) and the left censored nature of the (untargeted) metabolic data. The data is left censored because our instruments don't have unlimited sensitivity. Due to left censoring (dashed line), we observe only part of the distribution. Without the variation introduced by the different batches and plates the distribution would be much narrower. It's also interesting to see that you can have an apparent drift over time that's just the consequence of random variation between batches. 
+The plot below shows the technical variation (the different colors correspond to different batches) and the left censored nature of the (untargeted) metabolic data. The data is left censored because our instruments don't have unlimited sensitivity. Due to left censoring (dashed line), we observe only part of the distribution. Without the variation introduced by the different batches and plates the distribution would be much narrower. It's also interesting to see that you can have an apparent drift over time that's just the consequence of random variation between batches. 
 
 ```{r}
 #| warning: false
@@ -77,6 +84,16 @@ y_lab <- "y"
 sub_1 <- 'Ideally the data looks like this (no censoring or batch-effects)'
 sub_2 <- 'Reality: there are batch effects'
 sub_3 <- "Reality: there are batch effects + censoring due to detection limits"
+
+# via https://github.com/easystats/see/blob/main/R/scale_color_bluebrown.R
+bluebrown_colors_list <- c(
+  lightblue = "#6DC0E0",
+  darkbrown = "#391D07",
+  blue = "#5B93AE",
+  lightbrown = "#92673C",
+  darkblue = "#1F4454",
+  brown = "#61381A"
+)
 
 linewidth <- 1.1
 nr_bins <- 25
@@ -111,7 +128,7 @@ p01a <- df_plot |>
   ggplot(aes(x = inj_order, y = log_y_no_batch, color = batch_id)) + 
   geom_point() + 
   ylim(c(min(df$log_y), max(df$log_y))) +
-  see::scale_color_bluebrown() +
+  scale_color_manual(values = unname(bluebrown_colors_list)) +
   theme_minimal() +
   theme(legend.position = 'none') +
   labs(x = x_lab, y = y_lab, subtitle = sub_1)
@@ -120,7 +137,7 @@ p02a <- df_plot |>
   ggplot(aes(x = inj_order, y = log_y, color = batch_id)) + 
   geom_point() + 
   ylim(c(min(df$log_y), max(df$log_y))) +
-  see::scale_color_bluebrown() +
+  scale_color_manual(values = unname(bluebrown_colors_list)) +
   theme_minimal() +
   theme(legend.position = 'none') +
   labs(x = x_lab,  y = y_lab, subtitle = sub_2)
@@ -129,11 +146,11 @@ p03a <- df_plot |>
   ggplot(aes(x = inj_order, y = log_y_lab, color = batch_id)) + 
   geom_point() + 
   geom_point(data = subset(df_plot, censored), 
-             aes(x = inj_order, y = log_y), color = 'black', shape = 5) +
+             aes(x = inj_order, y = log_y), color = '#dbdbdb', shape = 5) +
   batch_lod_hline(df_plot, nr_batches, samples_p_batch,
                   linewidth = linewidth, linetype = 'dashed', color = 'black') +
   ylim(c(min(df$log_y), max(df$log_y))) +
-  see::scale_color_bluebrown() +
+  scale_color_manual(values = unname(bluebrown_colors_list)) +
   theme_minimal() +
   theme(legend.position = 'none') +
   labs(x = x_lab, y = y_lab, subtitle = sub_3)
@@ -157,7 +174,7 @@ p02b <- df_plot |>
 p03b <- df_plot |> 
   ggplot(aes(x = log_y_lab)) +
   geom_histogram(bins = nr_bins, fill = 'black', alpha = 0.7, color = 'white') +
-  geom_vline(aes(xintercept = log_lod), linetype = 'dashed', linewidth = linewidth - 0.3) +
+  geom_vline(aes(xintercept = log_lod), linetype = 'dashed', linewidth = linewidth - 0.5) +
   xlim(c(min(df$log_y), max(df$log_y))) +
   ylim(c(0, axis_range_bins)) +
   coord_flip() +
@@ -174,7 +191,7 @@ p01 / p02 / p03
 # The status quo of imputation and technical variation adjustment 
 As I tried to illustrate using these plots, technical variation and left censoring due to limits of detection (LOD) can be significant hurdles in metabolomics analysis. Yet, read method sections in the literature, and you'll often find they're treated like an afterthought. If addressed at all, methods sections will often only briefly state: 'batch effects were removed using ComBat' (despite ComBat fundamentally ignoring the censored nature of data below the LOD) or 'data was imputed using methods X or Y' (referencing imputation techniques like those by Lubin et al. or Lazar et al. which focus solely on left censoring without inherently handling batch effects). 
 
-Furthermore, these references to 'foundational' imputation methods (like those by Lubin et al. or Lazar et al.) typically lack specifics on the exact imputation model; they neither detail which variables were included in the current study's imputation nor do the original papers offer clear guidance on which should be included (because it wasn't the goal of those papers). However, this is important for the analyst and the reader to know, as imputation models and the models for the subsequent analysis need to be congenial –- meaning the imputation must account for the relationships you intend to study later. The variables included in imputation can matter greatly!
+Furthermore, these references to 'foundational' imputation methods (like those by Lubin et al. or Lazar et al.) typically lack specifics on the exact imputation model; they neither detail which variables were included in the current study's imputation nor do the original papers offer clear guidance on which should be included (because it wasn't the goal of those papers). However, this is important for the analyst and the reader to know, as imputation models and the models for the subsequent analysis need to be congenial -- meaning the imputation must account for the relationships you intend to study later. The variables included in imputation can matter greatly!
 
 # Why a unified model is better
 Moreover, I will argue that the imputation and technical variation adjustment is best done in one and the same model, because the technical variation and left censoring are often intertwined. Namely, the same technical factors causing batch-to-batch (or plate-to-plate) shifts in metabolite levels can also influence instrument sensitivity or baseline noise, thereby changing the effective LOD for different batches. This means that you cannot obtain an unbiased estimate of the technical variation without modeling the left censoring, or the left censoring (imputes) without modeling the the technical variation. 
@@ -182,19 +199,19 @@ Moreover, I will argue that the imputation and technical variation adjustment is
 In other words, if you adjust for batch effects before imputation (e.g., using methods like ComBat that ignore censoring), you are applying adjustments to data that either contains arbitrary placeholders for non-detects (like LOD/2) or simply ignores the information that the true value is below a certain batch-specific threshold. This distorts the estimation of the batch effect itself. And the higher proportion of nondetects, the worse this bias can get. 
 
 One might also consider a seemingly pragmatic two-step approach: first, perform multiple imputation using a model that accounts for batch-specific LODs and includes batch and plate effects (perhaps as fixed effects[^2]); second, fit a separate mixed model to each imputed dataset to estimate and remove these batch effects. However, this sequential process introduces several statistical challenges compared to a unified model:
-- Treating batch effects as fixed during imputation (often a limitation of available software for censored models) but then as random during the adjustment step creates a conceptual mismatch in how technical variation is modeled and removed.
-- Estimating imputation parameters and batch effects sequentially can be less statistically efficient than a unified model where all parameters are estimated simultaneously, allowing information to be shared across all model components.
+* Treating batch effects as fixed during imputation (often a limitation of available software for censored models) but then as random during the adjustment step creates a conceptual mismatch in how technical variation is modeled and removed.
+* Estimating imputation parameters and batch effects sequentially can be less statistically efficient than a unified model where all parameters are estimated simultaneously, allowing information to be shared across all model components.
 
 [^2]: Fast, robust, frequentist left censored multilevel models are not really [possible/available](/posts/left-censored-models-showcase/).
 
 Therefore, a unified model that simultaneously estimates the technical variation and performs the imputation using batch-specific LOD information is better able to obtain unbiased estimates of both the true underlying metabolite levels and the relationships with outcomes or exposures. The `brms` model presented below is a way to implement such a unified model.
 
-# brms model
+# A {brms} model
 ```{r}
 nr_imputations <- 100
 m <- brms::brm(formula = log_y_obs | cens(left_cens) ~ 1 + x + (1|batch_id/plate_nested_coding), 
                data = df |> dplyr::mutate(left_cens = censored * -1), 
-               cores = 4,
+               cores = 4, seed = 2025, refresh = 1000,
                backend = 'cmdstanr')
 
 total_nr_draws <- brms::ndraws(m) 
@@ -239,7 +256,7 @@ Below we see that the model has indeed recovered the parameters of the data gene
 #| warning: false
 summary(m)
 ```
-Visually, we can plot one of the imputed sets, and we can see that it fits well with the ideal data distribution that has the technical variation removed and the nondetects imputed. We imputed multiple times to represent and capture the uncertainty around the exact value of the nondetects[^3]. We can also see that some of the observed values are now under the the original limit of detection. This is because -- according to our model -- these observations would have been nondetects in a 'usual' batch. And vice versa, there are some nondetects that would have been observed in a 'usual' batch and are now about the LOD. 
+Visually, we can plot one of the imputed sets, and we can see that it fits well with the ideal data distribution that has the technical variation removed and the nondetects imputed. We imputed multiple times to represent and capture the uncertainty around the exact value of the nondetects[^3]. We can also see that some of the observed values are now under the the original limit of detection. This is because -- according to our model -- these observations would have been nondetects in a 'usual' batch. And vice versa, there are some nondetects that would have been observed in a 'usual' batch and are now above the original LOD. 
 
 [^3]: In discussions I get the sense that many people think that the goal of imputation in metabolomics is to get as close as possible to the value that we would have observed with unlimited instrument sensitivity. While that's welcome, it's more important for valid downstream inference with censored data to accurately represent the uncertainty associated with those unobserved values. 
 
@@ -247,17 +264,17 @@ Visually, we can plot one of the imputed sets, and we can see that it fits well 
 #| warning: false
 #| code-fold: true
 #| fig-height: 3.5
-df_imputes <- bind_cols(df, r)
+df_imputes <- dplyr::bind_cols(df, r)
 
 p_a <- df_imputes |> 
   ggplot(aes(inj_order, V2)) + 
-  see::scale_color_bluebrown() +
+  scale_color_manual(values = unname(bluebrown_colors_list)) +
   geom_point(aes(color = batch_id)) + 
   geom_point(data = subset(df_imputes, censored), 
            aes(x = inj_order, y = V2), shape = 5) +
   labs(x = x_lab, y = y_lab) +
   batch_lod_hline(df_imputes, nr_batches, samples_p_batch,
-                  linewidth = linewidth, linetype = 'dashed', color = 'black') +
+                  linewidth = linewidth, linetype = 'dashed') +
   ylim(c(min(df$log_y), max(df$log_y))) +
   theme_minimal() +
   theme(legend.position = 'none') 
@@ -279,8 +296,8 @@ And if we plot the values from an imputed set vs the original values we see the 
 #| warning: false
 #| code-fold: true
 #| fig-height: 3.5
-bind_cols(df, r) |> 
-  filter(plate_nested_coding == '4_4') |> 
+df_imputes |> 
+  dplyr::filter(plate_nested_coding == '4_4') |> 
   ggplot(aes(V2, log_y, color = censored)) + 
   geom_point() + 
   geom_hline(aes(yintercept = log_lod), linetype = 'dashed') +
@@ -290,16 +307,16 @@ bind_cols(df, r) |>
 ```
 
 # Implications
-Unfortunately,  I think this intertwined nature of nondetects and batch effects also means that your technical variation adjustment need to be bespoke; you cannot do this imputation and 'denoising' once for your dataset and be done with it (if you care to this degree about bias). In theory, you could build the richest possible imputation model (and thus technical variation removal model) that is congenial with the most complex analysis that you would like to do and be done with it. In practice, this would be very hard with the amount of times a dataset is reanalysed by different analysts and the near certainty of missing values for the other variables in a rich imputation model. It will be even harder to create an congenial dataset when a mixture is the topic of interest and the dataset contains many left censored features, because you would need to impute in two variables simultaneously and there's no (easy) way to fit a multivariate left censored model [^4].
+Unfortunately,  I think this intertwined nature of nondetects and batch effects also means that your technical variation adjustment needs to be bespoke; you cannot do this imputation and 'denoising' once for your dataset and be done with it (if you care to this degree about bias). In theory, you could build the richest possible imputation model (and thus technical variation removal model) that is congenial with the most complex analysis that you would like to do and be done with it. In practice, this would be very hard with the amount of times a dataset is reanalysed by different analysts and the near certainty of missing values for the other variables in a rich imputation model. It will be even harder to create an congenial dataset when a mixture is the topic of interest and the dataset contains many left censored features, because you would need to impute in two variables simultaneously and there's no (easy) way to fit a multivariate left censored model [^4].
 
 [^4]: I think some kind of Gibbs sampler or some chained equation is the best we can do.
 
-One potential way around this intertwined nature may be using the pooled QC samples for the batch adjustment using some kind of LOESS fit across the injection order. However, (1) labs do not always deliver information on QCs (2) there are less QA samples than study samples and as such there's less data to inform such a model (3) readily available LOESS models do not take left censoring into account. More importantly, it also doesn't easily incorporate other covariates in the adjustment process which risks removing real biological variation and potentially missing that for example cases are more often censored. Such a LOESS approach also still separates batch correction from the imputation of study samples, failing to address this interdependence between batch-specific LODs and the imputation process itself. 
+One potential way around this intertwined nature may be using the pooled QC samples for the batch adjustment using some kind of LOESS fit across the injection order. However, (1) labs do not always deliver information on QCs (2) there are less QA samples than study samples and as such there's less data to inform such a model (3) readily available LOESS models do not take left censoring into account. More importantly, it also doesn't easily incorporate other covariates in the adjustment process which risks removing real biological variation and potentially failing to capture that for example cases are more often censored. Such a LOESS approach also still separates batch correction from the imputation of study samples, failing to address this interdependence between batch-specific LODs and the imputation process itself. 
 
 # Possible extensions
 Sometimes there's also drift within a plate or a batch. One possible way to model this is by adding a random slope for injection order within a batch or plate. The code from above readily supports this, because the code assumes all the random effects are nuisance variation. Although, I think that such more complicated models are much harder to fit so you may want to represent this drift in another way. Maybe using some fixed effects[^5] and then remove this from the imputations and adjustment manually using some `model.matrix()` operation. 
 
-One final point that I want to make on these models, is on the assumption of a multiplicative error term -- here made by the log transformation -- in metabolomic data. It's a useful model in the sense that it permits only positive values and it is in line with our idea of the data generation process. Namely, it is plausible that the true error structure arises from such a multiplicative process, because measured intensity/concentration can be thought of as a function of *duration of exposure* $\times$ *number of times exposed*. However, in a lognormal distribution the error is also smaller for smaller values. And this is of course opposite of the limit of detection idea. If the error were indeed smaller for smaller values there would be no point in having an limit of detection! I hope the multiple versions of the imputed dataset at least overcome this partially. @senn2012ghosts mentions that realistic likelihood models could consider a complex mixture of true concentration and error measurement models, or model the mean and variance structures separately. While I always like to think about the ideal model, I think for large scale metabolomics where you often have to fit this model to thousands of features this is not feasible. 
+One final point that I want to make on these models, is on the assumption of a multiplicative error term -- here made by the log transformation -- in metabolomic data. It's a useful model in the sense that it permits only positive values and it is in line with our idea of the data generation process. Namely, it is plausible that the true error structure arises from such a multiplicative process, because measured intensity/concentration can be thought of as a function of *duration of exposure* $\times$ *number of times exposed*. However, in a lognormal distribution the error is also smaller for smaller values. And this is of course opposite of the limit of detection idea. If the error were indeed smaller for smaller values there would be no limit of detection! I hope the multiple versions of the imputed dataset at least overcome this partially. @senn2012ghosts mention that realistic likelihood models could consider a complex mixture of true concentration and error measurement models, or model the mean and variance structures separately. While I always like to think about the ideal model, I think for large scale metabolomics where you often have to fit this model to thousands of features this is not feasible. 
 
 <!-- " the measured concentration can be thought of as a function of *duration of exposure* $\times$ *number of times exposed*. So differences in measured concentrations of the same compound (i.e. the variation) arise because of differences in one (or both) of the terms of this formula. And as we can see this formula is a *product* of factors, logarithms tend to work better when data arises from such a multiplicative process." -->
 

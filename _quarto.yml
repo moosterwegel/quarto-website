@@ -61,6 +61,7 @@ format:
     theme: [custom.scss, cosmo]
     highlight-style: monokai
     linkcolor: black
+    lang: en
     include-after-body: traffic.html
     fig-format: png
     fig-dpi: 600

@@ -226,3 +226,12 @@ p > code, li > code, span > code {
   padding: 0.15em 0.3em;
   font-size: 0.8em;
 }
+
+// break up word if too long
+p, li {
+  hyphens: auto;
+  // Include vendor prefixes for older browser compatibility, though less needed now
+  -webkit-hyphens: auto; // Safari
+  -moz-hyphens: auto;    // Firefox (older versions)
+  -ms-hyphens: auto;     // IE/Edge (older versions)
+}
