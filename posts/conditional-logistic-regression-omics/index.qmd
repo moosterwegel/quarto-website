@@ -1,7 +1,7 @@
 ---
 title: "The superiority of conditional logistic regression in (metabol)omic matched case-control studies"
 draft: true
-date: "2025-06-20"
+date: "2025-05-05"
 format: 
   html: 
       echo: true
@@ -9,10 +9,6 @@ format:
       warning: false
       code-fold: true
 ---
-
-Conditional logistic regression[^1] is a classic tool in an epidemiologist's toolkit. It's usually used to analyse matched case-control studies. However, popular guidance has advocated to 'break' the matching and analyse such studies using a ordinary logistic model for small efficiency gains. In this blog posts I want to demonstrate the clear superiority of conditional logistic regression in well-designed matched case-control studies of omic data that contain a substantial amount of technical variation.
-
-[^1]: In other fields also known as the hypergeomtric test, or '[as an estimator of the FE LR model](https://x.com/noah_greifer/status/1565747391734628353)'.
 
 "conditional logistic regression. In this model, all cluster-constant covariates are absorbed into a cluster-specific intercept, whereas cluster-varying covariates are adjusted for by explicitly adding these as explanatory variables to the model."
 -  https://doi.org/10.1002/sim.8332 
@@ -22,12 +18,15 @@ Conditional logistic regression[^1] is a classic tool in an epidemiologist's too
 
 "The key is that the CLR conditions out any factors constant within the matched pair (the stratum), and by making the assay batch/plate the randomization block for the pair, technical variation associated with that batch/plate gets conditioned out too."
 
+Conditional logistic regression[^1] is a classic tool in an epidemiologist's toolkit. It's usually used to analyse matched case-control studies. However, popular guidance has advocated to 'break' the matching and analyse such studies using a ordinary logistic model for small efficiency gains. In this blog posts I want to demonstrate the superiority of conditional logistic regression in well-designed matched case-control studies of omic data that contain a substantial amount of technical variation.
+
+[^1]: In other fields also known as the hypergeomtric test, or '[as an estimator of the FE LR model](https://x.com/noah_greifer/status/1565747391734628353)'.
+
 # The example study
 
-Consider the following study. Cases are 1:1 matched to controls (on some covariates) and the case-control pairs are block randomized over the analytical assay. In other words, the matched pairs (blocks) will be randomized over the plates and batches and within the block we randomize whether the position of the case and control. In visual form:
+Let's consider the following hypothetical omics study. Cases were 1:1 matched to controls on important covariates. Crucially, the case-control pairs were then block randomized over the analytical assay. In other words, the matched pairs (blocks) were randomized over the plates and batches and within the block we randomize whether the position of the case and control. In visual form:
 
 ```{r}
-
 library(ggplate)
 library(ggplot2)
 
@@ -55,6 +54,10 @@ ggplate::plate_plot(
 
 # add plate background
 ```
+This design ensures that the case and its matched control are processed consecutively and as such are processed under highly similar laboratory conditions (same plate, often adjacent wells, same batch, similar time).
+
+This elegant formulation eliminates the stratum-specific intercept terms, effectively controlling for all measured and unmeasured factors that are constant within strata.
+
 
 # Conditional logistic regression
 
@@ -65,6 +68,8 @@ math
 In `R` you can easily fit a conditional logistic regression using the `clogit` function from the `surival` package[^2].
 
 [^2]: Apparently you can also fit a conditional logistic regression model [using a random effect model!](https://www.metafor-project.org/doku.php/tips:clogit_paired_binary_data) (in some cases (?))
+
+[^2]: Interestingly, CLR models can sometimes be estimated using generalized linear mixed models software by specifying a particular random intercepts structure, although clogit is the standard. See for example the [Metafor documentation on fitting CLR with GLMM](https://www.metafor-project.org/doku.php/tips:clogit_paired_binary_data)).
 
 ```{r}
 #| evaluate: false
@@ -79,6 +84,12 @@ survival::clogit(is_case ~ 1 + survival::strata(pair) + x,
 
 No matter how extensive we model this drift and remove this variation, the remaining variation will be greater than the technical drift over one position in the data. And the latter is precisely the variation that the conditional logistic regression will utilize in our well designed example study. The unobserved stratum-level variables is the technical drift here (?).
 
+Conditional logistic regression bypasses this problem. Because it conditions on the matched pair (stratum), any technical factor that affects both the case and the control in that pair approximately equally gets cancelled out, just like the α 
+
+The "unobserved stratum-level variables" that CLR adjusts away are precisely these shared technical artifacts within the pair.
+  
+
+
 # Caveats
 
-Maybe conditional on total total amount of variation in study.
+Maybe conditional on total total amount of variation in study. I should run some simulations (shouldn't we all?)
