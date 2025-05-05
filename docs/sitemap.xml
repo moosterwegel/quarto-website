@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://maxoosterwegel.com/posts/impute-and-remove-technical-variation-metabolomics/index.html</loc>
-    <lastmod>2025-04-28T18:42:11.400Z</lastmod>
+    <lastmod>2025-04-28T19:13:56.478Z</lastmod>
   </url>
   <url>
     <loc>https://maxoosterwegel.com/index.html</loc>
@@ -11,6 +11,10 @@
   <url>
     <loc>https://maxoosterwegel.com/about.html</loc>
     <lastmod>2025-04-21T18:51:13.796Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/index.html</loc>
+    <lastmod>2025-05-05T22:10:05.180Z</lastmod>
   </url>
   <url>
     <loc>https://maxoosterwegel.com/posts/left-censored-models-showcase/index.html</loc>

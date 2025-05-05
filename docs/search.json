@@ -2,23 +2,23 @@
   {
     "objectID": "posts/impute-and-remove-technical-variation-metabolomics/index.html",
     "href": "posts/impute-and-remove-technical-variation-metabolomics/index.html",
-    "title": "Imputing and removing technical variation in left censored metabo-lomic data",
+    "title": "Imputing and removing technical variation in left censored metabolomic data",
     "section": "",
     "text": "The field of environmental epidemiology has made significant investments in untargeted (also known as nontargeted) metabolomics over the past few years, to gain deeper insights into exposure levels, biological mechanisms, and their relationship to disease. These investments are starting to pay dividends by enabling larger studies, but this scale-up comes with its own challenges. With sample sizes growing substantially, processing all study samples in a single batch is no longer feasible, forcing analyses to span longer periods. These extended timeframes introduce greater variation in technical, non-biological factors that contaminate the data with unwanted variation. Additionally, as I’ve discussed in a previous post, this metabolomic data is often left censored, creating further analytical challenges. In this post, I’ll share a method I developed that handles both the imputation of nondetects and the removal of technical variation in one and the same model1."
   },
   {
     "objectID": "posts/impute-and-remove-technical-variation-metabolomics/index.html#footnotes",
     "href": "posts/impute-and-remove-technical-variation-metabolomics/index.html#footnotes",
-    "title": "Imputing and removing technical variation in left censored metabo-lomic data",
+    "title": "Imputing and removing technical variation in left censored metabolomic data",
     "section": "Footnotes",
-    "text": "Footnotes\n\n\nIf your research question pertains directly to the exposure or metabolite level itself – rather than its relationship as a predictor for an outcome – then imputation is not necessary of course, because you can directly use the fitted left censored model.↩︎\nFast, robust, frequentist left censored multilevel models are not really possible/available.↩︎\nIn discussions I get the sense that many people think that the goal of imputation in metabolomics is to get as close as possible to the value that we would have observed with unlimited instrument sensitivity. While that’s welcome, it’s more important for valid downstream inference with censored data to accurately represent the uncertainty associated with those unobserved values.↩︎\nI think some kind of Gibbs sampler or some chained equation is the best we can do.↩︎\nI’m not entirely sure what’s better (in this setup): a model with random slopes that possibly doesn’t fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes it also a good option.↩︎"
+    "text": "Footnotes\n\n\nIf your research question pertains directly to the exposure or metabolite level itself – rather than its relationship as a predictor for an outcome – then imputation is not necessary of course, because you can directly use the fitted left censored model.↩︎\nFast, robust, frequentist left censored multilevel models are not really possible/available.↩︎\nIn discussions I get the sense that many people think that the goal of imputation in metabolomics is to get as close as possible to the value that we would have observed with unlimited instrument sensitivity. While that’s welcome, it’s more important for valid downstream inference with censored data to accurately represent the uncertainty associated with those unobserved values.↩︎\nI think some kind of Gibbs sampler or some chained equation is the best we can do.↩︎\nI’m not entirely sure what’s better (in this setup): a model with random slopes that possibly doesn’t fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes is also a good option.↩︎"
   },
   {
     "objectID": "index.html",
     "href": "index.html",
     "title": "Max Oosterwegel -- blog ( ._.)",
     "section": "",
-    "text": "Year\n\n\nTitle\n\n\nMonth & Day\n\n\n\n\n\n\n2025\n\n\nImputing and removing technical variation in left censored metabolomic data\n\n\nApril 28\n\n\n\n\n\n\nFitting left censored models using R\n\n\nApril 21\n\n\n\n\nNo matching items"
+    "text": "Year\n\n\nTitle\n\n\nMonth & Day\n\n\n\n\n\n\n2025\n\n\nThe advantages of conditional logistic regression in (metabol)omic matched case-control studies\n\n\nMay 5\n\n\n\n\n\n\nImputing and removing technical variation in left censored metabolomic data\n\n\nApril 28\n\n\n\n\n\n\nFitting left censored models using R\n\n\nApril 21\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "about.html",
@@ -26,6 +26,41 @@
     "title": "Max Oosterwegel",
     "section": "",
     "text": "I am a PhD student in environmental epidemiology at The Institute for Risk Assessment Sciences at Utrecht University. In this PhD I work with untargeted / nontargeted metabolomic data to study respiratory health outcomes (think asthma, COPD, lung function) across the life course. This PhD is financed by the EXPANSE and EXPOSOME-NL consortia which are part of a broader effort to systematically characterize the environment and its exposures to humans on a large scale (dubbed the exposome). I originally did my bachelor’s in artificial intelligence and a master in data science before pivoting to (environmental) epidemiology."
+  },
+  {
+    "objectID": "posts/conditional-logistic-regression-omics/index.html",
+    "href": "posts/conditional-logistic-regression-omics/index.html",
+    "title": "The advantages of conditional logistic regression in (metabol)omic matched case-control studies",
+    "section": "",
+    "text": "Conditional logistic regression1 is a classic tool in an epidemiologist’s toolkit. It’s usually used to analyse matched case-control studies. However, popular methodological guidance has either explicitly advocated for ‘breaking’ the matching and using ordinary logistic models instead, or has sometimes been interpreted that way, with the justification being potential small precision gains (Pearce (2016)). In this blog post I want to demonstrate the advantages that conditional logistic regression can have in well-designed matched case-control studies of omic data that contain a substantial amount of technical variation."
+  },
+  {
+    "objectID": "posts/conditional-logistic-regression-omics/index.html#stratum-specific",
+    "href": "posts/conditional-logistic-regression-omics/index.html#stratum-specific",
+    "title": "The advantages of conditional logistic regression in (metabol)omic matched case-control studies",
+    "section": "Unconditional logistic regression: dummy variables",
+    "text": "Unconditional logistic regression: dummy variables\nOne way to handle the bias from the matching process is by including dummy variables for all matched sets, effectively fitting a stratum-specific logistic regression model. In this model, the probability (\\(\\pi\\)) of being a case within matched set \\(k\\) depends on the predictors \\(x\\) and a unique intercept \\(\\alpha_k\\) for that specific set:\n\\[\n\\pi_k(\\mathbf{x})=\\frac{\\mathrm{e}^{\\alpha_k+\\boldsymbol{\\beta}^{\\prime} \\mathbf{x}}}{1+\\mathrm{e}^{\\alpha_k+\\boldsymbol{\\beta}^{\\prime} \\mathbf{x}}}\n\\] \\(\\alpha_k\\) represents the baseline log-odds of being a case that are specific to stratum \\(k\\), capturing the effects of the matching factors and any other unmeasured matching set characteristics. \\(\\beta\\) represents the log-odds ratios for the predictors \\(x\\), assumed to be constant across strata (Hosmer, Lemeshow, and Sturdivant (2013)).\nThis is somewhat feasible for large matching sets (i.e. many controls per case). However, such a fully stratified likelihood will need (\\(n/2 - 1\\)) extra parameters for 1:1 matched sets. This will lead to bias when using maximum likelihood because the number of parameters increases at the same rate as the sample size (see Breslow and Day 1980, sec. 7.1; also Hosmer, Lemeshow, and Sturdivant 2013, chap. 7)."
+  },
+  {
+    "objectID": "posts/conditional-logistic-regression-omics/index.html#unconditional-logistic-regression-breaking-matching",
+    "href": "posts/conditional-logistic-regression-omics/index.html#unconditional-logistic-regression-breaking-matching",
+    "title": "The advantages of conditional logistic regression in (metabol)omic matched case-control studies",
+    "section": "Unconditional logistic regression: breaking matching",
+    "text": "Unconditional logistic regression: breaking matching\nBecause of this bias, unconditional logistic regression with dummy variables is rarely used in epidemiology. More common is an unconditional logistic regression where the matching set indicators are not explicitly modeled. Instead, the matching is broken and the variables that were used for matching are added as predictor to the logistic model. Matched sets indicators are thus omitted. This approach also utilizes contrasts between matched pairs and pairs with only a control or case in it still contribute to the analysis."
+  },
+  {
+    "objectID": "posts/conditional-logistic-regression-omics/index.html#conditional-logistic-regression",
+    "href": "posts/conditional-logistic-regression-omics/index.html#conditional-logistic-regression",
+    "title": "The advantages of conditional logistic regression in (metabol)omic matched case-control studies",
+    "section": "Conditional logistic regression",
+    "text": "Conditional logistic regression\nAnother approach is conditional logistic regression (CLR). Instead of trying to estimate the potentially numerous stratum-specific intercepts (\\(\\alpha_k\\)) from the dummy variable model, CLR treats them as nuisance parameters and disregards their estimation such that we can use methods for conditional inference to create a likelihood function. After some derivation2, the conditional likelihood for the matched set \\(k\\) looks as follows for a 1:1 matched study design:\n\\[\nl_k(\\boldsymbol{\\beta})=\\frac{\\mathrm{e}^{\\beta^{\\prime} \\mathbf{x}_{1 k}}}{\\mathrm{e}^{\\beta^{\\prime} \\mathbf{x}_{1 k}}+\\mathrm{e}^{\\beta^{\\prime} \\mathbf{x}_{0 k}}} .\n\\] Where \\(x_1\\) and \\(x_0\\) correspond to the data from the case and control of a matched set \\(k\\) respectively, and \\(\\beta\\) is the only unknown parameter (your exposure for example). In other words, this conditional likelihood is the probability that, within matched set \\(k\\), the case is in fact the case if we assume a stratum-specific logistic regression model. The full conditional likelihood can be obtained here by taking the product of the likelihoods for each matched set (or summing the log-likelihoods of course).\nThe important thing to remember for my argument is that – contrary to logistic regression where we break the matching – the effect of a predictor is only measured relative to the values in its matched set rather than relative to all values of the predictor (Hosmer, Lemeshow, and Sturdivant (2013)). In standard epidemiology training, this is expressed as ‘only disconcordant pairs contribute information to the analysis’. This is also why such training mentions that you cannot analyse factors that were matched on – these values are constant within a pair and this estimator is thus undefined.\nIn R you can easily fit a CLR by writing survival::clogit(is_case ~ 1 + survival::strata(pair) + x, data = df)3."
+  },
+  {
+    "objectID": "posts/conditional-logistic-regression-omics/index.html#footnotes",
+    "href": "posts/conditional-logistic-regression-omics/index.html#footnotes",
+    "title": "The advantages of conditional logistic regression in (metabol)omic matched case-control studies",
+    "section": "Footnotes",
+    "text": "Footnotes\n\n\nIn other fields also known as the hypergeometric-normal model, or as a ‘fixed-effects logit model for panel data’.↩︎\nWhen deriving this conditional likelihood from the stratum-specific logistic model (which includes \\(\\alpha\\)) the \\(\\alpha_k\\) term (representing the combined baseline risk and effects of all factors constant within matching set \\(k\\), including matching variables) appears in both the numerator and denominator and thus mathematically cancels out. This cancellation is why we often say these matching set-constant effects are “absorbed” into a cluster-specific intercept; they are removed from the likelihood equation that needs to be solved. See Hosmer, Lemeshow, and Sturdivant (2013), chap. 7 for more details on this derivation.↩︎\nUnder the hood, this function is a wrapper around coxph because the log likelihood of a conditional logistic regression is the same as a Cox model with a specific data structure. Apparently, you can also – in some cases (?) – fit a conditional logistic regression model using a generalized linear mixed model with particular random intercepts structure.↩︎"
   },
   {
     "objectID": "posts/left-censored-models-showcase/index.html",

@@ -320,4 +320,4 @@ One final point that I want to make on these models, is on the assumption of a m
 
 <!-- " the measured concentration can be thought of as a function of *duration of exposure* $\times$ *number of times exposed*. So differences in measured concentrations of the same compound (i.e. the variation) arise because of differences in one (or both) of the terms of this formula. And as we can see this formula is a *product* of factors, logarithms tend to work better when data arises from such a multiplicative process." -->
 
-[^5]: I'm not entirely sure what's better (in this setup): a model with random slopes that possibly doesn't fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes it also a good option.
+[^5]: I'm not entirely sure what's better (in this setup): a model with random slopes that possibly doesn't fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes is also a good option.

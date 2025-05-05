@@ -10,9 +10,524 @@
 <atom:link href="https://maxoosterwegel.com/index.xml" rel="self" type="application/rss+xml"/>
 <description>Blog Max Oosterwegel ( ._.)</description>
 <generator>quarto-1.7.27</generator>
-<lastBuildDate>Sun, 27 Apr 2025 22:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 04 May 2025 22:00:00 GMT</lastBuildDate>
 <item>
-  <title>Imputing and removing technical variation in left censored metabo-lomic data</title>
+  <title>The advantages of conditional logistic regression in (metabol)omic matched case-control studies</title>
+  <dc:creator>Max J. Oosterwegel</dc:creator>
+  <link>https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>Conditional logistic regression<sup>1</sup> is a classic tool in an epidemiologist’s toolkit. It’s usually used to analyse matched case-control studies. However, popular methodological guidance has either explicitly advocated for ‘breaking’ the matching and using ordinary logistic models instead, or has sometimes been interpreted that way, with the justification being potential small precision gains (<span class="citation" data-cites="pearce2016">Pearce (2016)</span>). In this blog post I want to demonstrate the advantages that conditional logistic regression can have in well-designed matched case-control studies of omic data that contain a substantial amount of technical variation.</p>
+<section id="the-example-study" class="level1">
+<h1>The example study</h1>
+<p>Let’s consider the following hypothetical omics study. Cases are 1:1 matched to controls on important covariates. Crucially, the case-control pairs are then block randomized over the analytical assay. That is, the matched pairs (blocks) are randomized over the plates and batches, and within the block we randomize the position of the case or control. In visual form where the numbers correspond to the matched pair:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(ggplate)</span>
+<span id="cb1-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(ggplot2)</span>
+<span id="cb1-3"></span>
+<span id="cb1-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">data</span>(data_continuous_96)</span>
+<span id="cb1-5"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">set.seed</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">123</span>)</span>
+<span id="cb1-6">block_possibilities <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>), <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>))</span>
+<span id="cb1-7"></span>
+<span id="cb1-8">data_continuous_96 <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> data_continuous_96 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb1-9">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">case =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.character</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">unlist</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(block_possibilities, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">48</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">replace =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>))),</span>
+<span id="cb1-10">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">case =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ifelse</span>(case <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'1'</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Case'</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Control'</span>),</span>
+<span id="cb1-11">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">pair =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">48</span>), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">each =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>),</span>
+<span id="cb1-12">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">96</span>))</span>
+<span id="cb1-13"></span>
+<span id="cb1-14">data_continuous_96 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb1-15">  ggplate<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plate_plot</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">position =</span> well,</span>
+<span id="cb1-16">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">value =</span> case,</span>
+<span id="cb1-17">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">label =</span> pair,</span>
+<span id="cb1-18">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">colour =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'skyblue'</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'orange'</span>),</span>
+<span id="cb1-19">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">plate_size =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">96</span>,</span>
+<span id="cb1-20">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">plate_type =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"round"</span>,</span>
+<span id="cb1-21">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">title =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">""</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb1-22">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">title =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">""</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb1-23">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">legend.title =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">element_blank</span>())</span></code></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/index_files/figure-html/unnamed-chunk-1-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="analysing-matched-data" class="level1">
+<h1>Analysing matched data</h1>
+<p>This design ensures that the case and its matched control are processed consecutively and as such are processed under highly similar laboratory conditions (same plate, same batch, adjacent wells, similar time). However, the matching process has also introduced a bias – we have forced the controls to be more like the cases than they otherwise would be. This needs to be taken into account. I will show how epidemiologists do this before illustrating why conditional logistic regression is an elegant solution to technical variation.</p>
+<section id="stratum-specific" class="level2">
+<h2 class="anchored" data-anchor-id="stratum-specific">Unconditional logistic regression: dummy variables</h2>
+<p>One way to handle the bias from the matching process is by including dummy variables for all matched sets, effectively fitting a stratum-specific logistic regression model. In this model, the probability (<img src="https://latex.codecogs.com/png.latex?%5Cpi">) of being a case within matched set <img src="https://latex.codecogs.com/png.latex?k"> depends on the predictors <img src="https://latex.codecogs.com/png.latex?x"> and a unique intercept <img src="https://latex.codecogs.com/png.latex?%5Calpha_k"> for that specific set:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Cpi_k(%5Cmathbf%7Bx%7D)=%5Cfrac%7B%5Cmathrm%7Be%7D%5E%7B%5Calpha_k+%5Cboldsymbol%7B%5Cbeta%7D%5E%7B%5Cprime%7D%20%5Cmathbf%7Bx%7D%7D%7D%7B1+%5Cmathrm%7Be%7D%5E%7B%5Calpha_k+%5Cboldsymbol%7B%5Cbeta%7D%5E%7B%5Cprime%7D%20%5Cmathbf%7Bx%7D%7D%7D%0A"> <img src="https://latex.codecogs.com/png.latex?%5Calpha_k"> represents the baseline log-odds of being a case that are specific to stratum <img src="https://latex.codecogs.com/png.latex?k">, capturing the effects of the matching factors and any other unmeasured matching set characteristics. <img src="https://latex.codecogs.com/png.latex?%5Cbeta"> represents the log-odds ratios for the predictors <img src="https://latex.codecogs.com/png.latex?x">, assumed to be constant across strata (<span class="citation" data-cites="hosmer2013">Hosmer, Lemeshow, and Sturdivant (2013)</span>).</p>
+<p>This is somewhat feasible for large matching sets (i.e.&nbsp;many controls per case). However, such a fully stratified likelihood will need (<img src="https://latex.codecogs.com/png.latex?n/2%20-%201">) extra parameters for 1:1 matched sets. This will lead to bias when using maximum likelihood because the number of parameters increases at the same rate as the sample size <span class="citation" data-cites="breslow1980 hosmer2013">(see Breslow and Day 1980, sec. 7.1; also Hosmer, Lemeshow, and Sturdivant 2013, chap. 7)</span>.</p>
+</section>
+<section id="unconditional-logistic-regression-breaking-matching" class="level2">
+<h2 class="anchored" data-anchor-id="unconditional-logistic-regression-breaking-matching">Unconditional logistic regression: breaking matching</h2>
+<p>Because of this bias, unconditional logistic regression with dummy variables is rarely used in epidemiology. More common is an unconditional logistic regression where the matching set indicators are not explicitly modeled. Instead, the matching is broken and the variables that were used for matching are added as predictor to the logistic model. Matched sets indicators are thus omitted. This approach also utilizes contrasts between matched pairs and pairs with only a control or case in it still contribute to the analysis.</p>
+</section>
+<section id="conditional-logistic-regression" class="level2">
+<h2 class="anchored" data-anchor-id="conditional-logistic-regression">Conditional logistic regression</h2>
+<p>Another approach is conditional logistic regression (CLR). Instead of trying to estimate the potentially numerous stratum-specific intercepts (<img src="https://latex.codecogs.com/png.latex?%5Calpha_k">) from the dummy variable model, CLR treats them as nuisance parameters and disregards their estimation such that we can use methods for conditional inference to create a likelihood function. After some derivation<sup>2</sup>, the conditional likelihood for the matched set <img src="https://latex.codecogs.com/png.latex?k"> looks as follows for a 1:1 matched study design:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0Al_k(%5Cboldsymbol%7B%5Cbeta%7D)=%5Cfrac%7B%5Cmathrm%7Be%7D%5E%7B%5Cbeta%5E%7B%5Cprime%7D%20%5Cmathbf%7Bx%7D_%7B1%20k%7D%7D%7D%7B%5Cmathrm%7Be%7D%5E%7B%5Cbeta%5E%7B%5Cprime%7D%20%5Cmathbf%7Bx%7D_%7B1%20k%7D%7D+%5Cmathrm%7Be%7D%5E%7B%5Cbeta%5E%7B%5Cprime%7D%20%5Cmathbf%7Bx%7D_%7B0%20k%7D%7D%7D%20.%0A"> Where <img src="https://latex.codecogs.com/png.latex?x_1"> and <img src="https://latex.codecogs.com/png.latex?x_0"> correspond to the data from the case and control of a matched set <img src="https://latex.codecogs.com/png.latex?k"> respectively, and <img src="https://latex.codecogs.com/png.latex?%5Cbeta"> is the only unknown parameter (your exposure for example). In other words, this conditional likelihood is the probability that, within matched set <img src="https://latex.codecogs.com/png.latex?k">, the case is in fact the case if we assume a stratum-specific logistic regression model. The full conditional likelihood can be obtained here by taking the product of the likelihoods for each matched set (or summing the log-likelihoods of course).</p>
+<p>The important thing to remember for my argument is that – <u>contrary to logistic regression where we break the matching – the effect of a predictor is only measured relative to the values in its matched set rather than relative to all values of the predictor</u> (<span class="citation" data-cites="hosmer2013">Hosmer, Lemeshow, and Sturdivant (2013)</span>). In standard epidemiology training, this is expressed as ‘only disconcordant pairs contribute information to the analysis’. This is also why such training mentions that you cannot analyse factors that were matched on – these values are constant within a pair and this estimator is thus undefined.</p>
+<p>In <code>R</code> you can easily fit a CLR by writing <code>survival::clogit(is_case ~ 1 + survival::strata(pair) + x, data = df)</code><sup>3</sup>.</p>
+</section>
+</section>
+<section id="technical-variation" class="level1">
+<h1>Technical variation</h1>
+<p>Next, let’s look at an example of (substantial) technical variation in an omics study. An untargeted metabolomic study in particular. The design was as outlined previously. In total, samples were processed in four batches consisting of five plates each. And because the samples were randomized over the assay we can safely assume that in expectation all these observations should randomly vary around a common mean. In other words, we should see no systemic trends along injection order. However, as you can see below, it seems that we have more than just random variation, because there is systematic variation by for example batch (see the different means for the batches (each panel is a batch, panels next to each other are consecutive batches)).</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">df <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> readr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">read_csv</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'example_data.csv'</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">show_col_types =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>)</span>
+<span id="cb2-2"></span>
+<span id="cb2-3">plot_feature <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(df, outcome) {</span>
+<span id="cb2-4">  df <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb2-5">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> inj_nr_in_batch, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> .data[[outcome]])) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-6">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">color =</span> status)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-7">    see<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_color_okabeito</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-8">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_smooth</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-9">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>batch, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-10">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Injection number in batch'</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'log(x)'</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-11">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_minimal</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-12">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">legend.position =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'none'</span>)</span>
+<span id="cb2-13">}</span>
+<span id="cb2-14"></span>
+<span id="cb2-15">df <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">log_x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">log</span>(x1)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot_feature</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'log_x'</span>)</span></code></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/index_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="adjustment" class="level1">
+<h1>Adjustment</h1>
+<p>Now, let’s try to remove this technical variation. We can do easily do this using a random intercept model. This aligns well with the aforementioned assumption of random variation around a common mean. The first model that I will try, will adjust for the batch effect:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">m1 <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> lme4<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lmer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">log</span>(x1) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> status <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|</span>batch), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> df)</span>
+<span id="cb3-2">df <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb3-3">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tech_var =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">predict</span>(m1, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">random.only =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>), </span>
+<span id="cb3-4">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">log_x_adj =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">log</span>(x1) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> tech_var) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb3-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot_feature</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'log_x_adj'</span>)</span></code></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/index_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The batches now have a common mean, but there’s still substantial amount of variation along injection order. Let’s see if these are simply plate effects or something more complicated:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">m2 <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> lme4<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lmer</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">log</span>(x1) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> status <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|</span>batch<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span>plate_nested_coding), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> df)</span>
+<span id="cb4-2">df <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb4-3">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tech_var =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">predict</span>(m2, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">random.only =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>), </span>
+<span id="cb4-4">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">log_x_adj =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">log</span>(x1) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> tech_var) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb4-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot_feature</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'log_x_adj'</span>)</span></code></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/index_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Even though we did a pretty good job of eliminating the technical variation – at least visually speaking – I think that no matter how extensively we model and adjust for this variation, the remaining variation will be greater than the technical drift over just one position in the data. And this variation over one position is precisely the only (technical) variation that the CLR will utilize in our well designed example study. That is, in CLR we condition on the matched pair and both the case and control in the pair are approximately equally affected by the technical variation and this variation thus gets cancelled out. We have essentially matched on the technical variation. And in CLR these factors that are constant across a match set are adjusted away – even the unobserved ones!</p>
+</section>
+<section id="caveats-and-other-designs" class="level1">
+<h1>Caveats and other designs</h1>
+<p>In this blog post, we saw that the key to dealing with technical variation in a case control design was (1) recognizing that technical variation over one position is likely minimal (relative to the total amount of technical variation) (2) recognizing that both measured and unmeasured factors in CLR are adjusted away (3) randomly locating a case and its control next to each other such that the technical variation would be minimal.</p>
+<p>I think that all of this could be contingent on the total total amount of (exposure) variation in study, because sometimes contrasts between groups can be much larger than within groups and as such contribute more information to the analysis. I should probably run some simulations to check that (shouldn’t we all?).</p>
+<p>There are of course many other designs than case-control studies. The case-cohort design for example. I do not have experience with case-cohort designs, but I do know that they are gaining popularity in environmental epidemiological omics studies because they easily allow for secondary analyses contrary to case-control studies (<span class="citation" data-cites="lin_proper_2009">Lin and Zeng (2009)</span>, <span class="citation" data-cites="obrien_case_2022">O’Brien, Lawrence, and Keil (2022)</span>). I would be interested to know examples of similar clever designs that mitigate the impact of technical variation in those types of studies.</p>
+
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0">
+<div id="ref-breslow1980" class="csl-entry">
+Breslow, Norman E, and Nicholas E Day. 1980. <em>Statistical Methods in Cancer Research Volume i: The Analysis of Case-Control Studies</em>. International Agency for Research on Cancer Scientific Publications. Lyon, France: International Agency for Research on Cancer.
+</div>
+<div id="ref-hosmer2013" class="csl-entry">
+Hosmer, David W, Stanley Lemeshow, and Rodney X Sturdivant. 2013. <em>Applied Logistic Regression</em>. 3rd ed. Wiley Series in Probability and Statistics. Wiley-Blackwell.
+</div>
+<div id="ref-lin_proper_2009" class="csl-entry">
+Lin, D. Y., and D. Zeng. 2009. <span>“Proper Analysis of Secondary Phenotype Data in Case-Control Association Studies.”</span> <em>Genetic Epidemiology</em> 33 (3): 256–65. <a href="https://doi.org/10.1002/gepi.20377">https://doi.org/10.1002/gepi.20377</a>.
+</div>
+<div id="ref-obrien_case_2022" class="csl-entry">
+O’Brien, Katie M., Kaitlyn G. Lawrence, and Alexander P. Keil. 2022. <span>“The Case for Case-Cohort: <span>An</span> Applied Epidemiologist’s Guide to Re-Framing Case-Cohort Studies to Improve Usability and Flexibility.”</span> <em>Epidemiology (Cambridge, Mass.)</em> 33 (3): 354–61. <a href="https://doi.org/10.1097/EDE.0000000000001469">https://doi.org/10.1097/EDE.0000000000001469</a>.
+</div>
+<div id="ref-pearce2016" class="csl-entry">
+Pearce, Neil. 2016. <span>“Analysis of Matched Case-Control Studies.”</span> <em>BMJ</em>, February, i969. <a href="https://doi.org/10.1136/bmj.i969">https://doi.org/10.1136/bmj.i969</a>.
+</div>
+</div></section><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>In other fields also known as the <a href="https://www.metafor-project.org/doku.php/analyses">hypergeometric-normal model</a>, or as a <a href="https://www.stata.com/manuals/rclogit.pdf">‘fixed-effects logit model for panel data’</a>.↩︎</p></li>
+<li id="fn2"><p>When deriving this conditional likelihood from the stratum-specific logistic model (which includes <img src="https://latex.codecogs.com/png.latex?%5Calpha">) the <img src="https://latex.codecogs.com/png.latex?%5Calpha_k"> term (representing the combined baseline risk and effects of all factors constant within matching set <img src="https://latex.codecogs.com/png.latex?k">, including matching variables) appears in both the numerator and denominator and thus mathematically cancels out. This cancellation is why we often say these matching set-constant effects are “absorbed” into a cluster-specific intercept; they are removed from the likelihood equation that needs to be solved. See <span class="citation" data-cites="hosmer2013">Hosmer, Lemeshow, and Sturdivant (2013)</span>, chap.&nbsp;7 for more details on this derivation.↩︎</p></li>
+<li id="fn3"><p>Under the hood, this function is a wrapper around <code>coxph</code> because the <a href="https://stat.ethz.ch/R-manual/R-devel/library/survival/html/clogit.html">log likelihood of a conditional logistic regression is the same as a Cox model with a specific data structure</a>. Apparently, you can also – in some cases (?) – fit a conditional logistic regression model <a href="https://www.metafor-project.org/doku.php/tips:clogit_paired_binary_data">using a generalized linear mixed model with particular random intercepts structure</a>.↩︎</p></li>
+</ol>
+</section><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{j._oosterwegel2025,
+  author = {J. Oosterwegel, Max},
+  title = {The Advantages of Conditional Logistic Regression in
+    (Metabol)omic Matched Case-Control Studies},
+  date = {2025-05-05},
+  url = {https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/},
+  doi = {placeholder},
+  langid = {en}
+}
+</code></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-j._oosterwegel2025" class="csl-entry quarto-appendix-citeas">
+J. Oosterwegel, Max. 2025. <span>“The Advantages of Conditional Logistic
+Regression in (Metabol)omic Matched Case-Control Studies.”</span> May 5,
+2025. <a href="https://doi.org/placeholder">https://doi.org/placeholder</a>.
+</div></div></section></div> ]]></description>
+  <guid>https://maxoosterwegel.com/posts/conditional-logistic-regression-omics/</guid>
+  <pubDate>Sun, 04 May 2025 22:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Imputing and removing technical variation in left censored metabolomic data</title>
   <dc:creator>Max J. Oosterwegel</dc:creator>
   <link>https://maxoosterwegel.com/posts/impute-and-remove-technical-variation-metabolomics/</link>
   <description><![CDATA[ 
@@ -1738,7 +2253,7 @@ Senn, Stephen, Nick Holford, and Hans Hockey. 2012. <span>“The Ghosts of Depar
 <li id="fn2"><p>Fast, robust, frequentist left censored multilevel models are not really <a href="../..\posts/left-censored-models-showcase/">possible/available</a>.↩︎</p></li>
 <li id="fn3"><p>In discussions I get the sense that many people think that the goal of imputation in metabolomics is to get as close as possible to the value that we would have observed with unlimited instrument sensitivity. While that’s welcome, it’s more important for valid downstream inference with censored data to accurately represent the uncertainty associated with those unobserved values.↩︎</p></li>
 <li id="fn4"><p>I think some kind of Gibbs sampler or some chained equation is the best we can do.↩︎</p></li>
-<li id="fn5"><p>I’m not entirely sure what’s better (in this setup): a model with random slopes that possibly doesn’t fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes it also a good option.↩︎</p></li>
+<li id="fn5"><p>I’m not entirely sure what’s better (in this setup): a model with random slopes that possibly doesn’t fully converge or some 20 fixed effect interaction terms (with potentially some sparsity inducing horseshoe or LASSO priors). I guess putting (very) strong priors on the random slopes is also a good option.↩︎</p></li>
 </ol>
 </section><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{j._oosterwegel2025,
   author = {J. Oosterwegel, Max},
