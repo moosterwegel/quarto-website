@@ -1,5 +1,5 @@
 ---
-title: "Fitting left censored models using R"
+title: "A guide to fitting left-censored models with R"
 date: "2025-04-21"
 format: 
   html: 
@@ -17,7 +17,7 @@ In environmental epidemiology -- and environmental studies more generally -- we 
 # Censoring
 Every epidemiologist is familiar with the standard survival analysis example that describes right censored observations. In this example, some participants are lost to follow-up or do not experience the event during the study. As a result, for these participants we only know that a possible event occurred somewhere after our observation period. These observations are then said to be right censored at the end of this window.
 
-With the aforementioned instruments, the situation is flipped: we only know a value is _less_ than a certain value. In these cases, our instrument can't discern the analyte from background noise below a certain point. In other words, measurements on such an instrument were limited to a minimum measurement of $l$ so any measurement smaller than $l$ was recorded as $l$. We refer to this minimum measurement as the limit of detection or limit of quantification and the data is said to be left censored at this limit[^1]. Measurements smaller than this simply cannot be measured with this instrument.[^2]
+With the aforementioned instruments, the situation is flipped: we only know a value is _less_ than a certain value. In these cases, our instrument can't discern the analyte from background noise below a certain point. In other words, measurements on such an instrument were limited to a minimum measurement of $l$ so any measurement smaller than $l$ was recorded as $l$. We refer to this minimum measurement as the limit of detection or limit of quantification and the data is said to be left-censored at this limit[^1]. Measurements smaller than this simply cannot be measured with this instrument.[^2]
 
 [^1]: Not to be confused with left truncation. In both truncation and censoring no information on the value of the observation beyond the truncation/censoring point is available. However, with censoring we know the number of observations beyond this point contrary to truncation where we do not observe any of the dependent variable or covariates -- the entry is simply missing from your data table. See for example @senn2012ghosts and @gelman2013bayesian, p.224 for a more in depth explanation on the statistical connections between truncation and censoring.
 
@@ -35,7 +35,7 @@ where $y_i$ represents the 'true', latent values, $y_i^*$ are values we observe 
 
 In most environmental studies (and the classical tobit model from economics)[^4] we then assume a normally distributed error term for the true values $y_i$ so we write 
 
-[^4]: The classical tobit model from economics [assumes a normal distribution for outcome variable with left censoring at 0](https://rdrr.io/cran/AER/man/tobit.html).
+[^4]: The classical tobit model from economics [assumes a normal distribution for outcome variable with left-censoring at 0](https://rdrr.io/cran/AER/man/tobit.html).
 
 $$
 y_i \sim \mathrm{~N}\left(a+b x_i, \sigma^2\right), \text { for } i=1, \ldots, n
@@ -150,7 +150,7 @@ df |>
   theme(legend.position = c(0.15, 0.9))
 ```
 
-# Fitting a left censored model using R
+# Fitting a left-censored model using R
 We can fit a model in `R` that accounts for the censoring mechanism by writing down the likelihood and passing it to `optim` to find the maximum:[^5]
 
 ```{r}
@@ -186,7 +186,7 @@ We can see that the procedure managed to recover the true values for $\sigma$ (=
 Of course there are also `R` packages that can do such a procedure for us. Both frequentist and Bayesian. Below an overview:
 
 ### {survival}
-In {survival} you can specify left censored models just as you would specify right censored models using the `Surv` object. The `censor_point` can also be a vector and thereby allow your observations to be censored at different levels/limits.
+In {survival} you can specify left-censored models just as you would specify right censored models using the `Surv` object. The `censor_point` can also be a vector and thereby allow your observations to be censored at different levels/limits.
 ```{r}
 m <- survival::survreg(survival::Surv(y_obs,
                                       y_obs > censor_point,
@@ -195,7 +195,7 @@ m <- survival::survreg(survival::Surv(y_obs,
                        dist = "gaussian")
 summary(m)
 ```
-You can get the same result by specifying the left censoring as a special case of interval censoring:
+You can get the same result by specifying the left-censoring as a special case of interval censoring:
 
 ```{r}
 m <- survival::survreg(survival::Surv(time = ifelse(y_obs == censor_point, -999, y_obs), 
@@ -218,7 +218,7 @@ m <- censReg::censReg(y_obs ~ 1 + x,
 summary(m)
 ```
 
-## Multilevel left censored models
+## Multilevel left-censored models
 Sometimes your data is more complicated and you want to specify different levels of your data. For example: a random intercept that specifies what subject or batch an observation belongs to. Your `R` package options are more limited then, as the frequentist approach now needs to additionally integrate over the random effects in the definition of the marginal likelihood. 
 
 The {survival} model does not support such models while {censReg} supports only a simple two-level random intercept model:
@@ -254,7 +254,7 @@ summary(m)
 ```
 
 ### {GLMMadaptive}
-One other frequentist package available for your left censored models is {GLMMadaptive}. In addition to your observed outcome, you need to specify a vector with an indicator variable that describes whether the observation was censored:
+One other frequentist package available for your left-censored models is {GLMMadaptive}. In addition to your observed outcome, you need to specify a vector with an indicator variable that describes whether the observation was censored:
 ```{r}
 m <- GLMMadaptive::mixed_model(cbind(y_obs, censored) ~ 1 + x, 
                                random = ~ 1|batch_id, 
@@ -272,7 +272,7 @@ GLMMadaptive::ranef(m) |> head()
 
 
 ### {brms} / {STAN}
-For Bayesian software implementations the addition of random intercepts and slopes is less challenging, because it avoids the cumbersome integration. Similarly to {GLMMadaptive} we specify an additional indicator variable for our {brms} model, but this time left censoring is indicated by $-1$ (uncensored is $0$ in `brms` and $1$ indicates right censoring):
+For Bayesian software implementations the addition of random intercepts and slopes is less challenging, because it avoids the cumbersome integration. Similarly to {GLMMadaptive} we specify an additional indicator variable for our {brms} model, but this time left-censoring is indicated by $-1$ (uncensored is $0$ in `brms` and $1$ indicates right censoring):
 
 ```{r}
 #| echo: false
@@ -299,7 +299,7 @@ With {brms} the possibilities are almost endless[^7] and fortunately its speed h
 [^7]: Unfortunately [no censored predictors yet](https://github.com/paul-buerkner/brms/issues/565).
 
 ### {MCMCglmm}
-{MCMCglmm} also supports left censored multilevel (>two-level?) models. The random effect notation is a bit [different](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q1/019896.html) though. The intercept is varying by subject here (random intercept), `random = ~us(1+fixed_effect):cluster` gives a random intercept/slope model with estimated covariance, and `random = ~idh(1+fixed_effect):cluster` is the same but with the covariance set to 0. We can specify a left censored outcome by creating two variables. If left censored, `y_obs_min` is `-Inf` and `y_obs_max` takes on the value of the censoring point, in the other, non censored cases `y_obs_min` and `y_obs_max` are identical and take on the observed value:
+{MCMCglmm} also supports left-censored multilevel (>two-level?) models. The random effect notation is a bit [different](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q1/019896.html) though. The intercept is varying by subject here (random intercept), `random = ~us(1+fixed_effect):cluster` gives a random intercept/slope model with estimated covariance, and `random = ~idh(1+fixed_effect):cluster` is the same but with the covariance set to 0. We can specify a left-censored outcome by creating two variables. If left-censored, `y_obs_min` is `-Inf` and `y_obs_max` takes on the value of the censoring point, in the other, non censored cases `y_obs_min` and `y_obs_max` are identical and take on the observed value:
 ```{r}
 #| output: false
 library(MCMCglmm)
@@ -338,7 +338,7 @@ A censored gamma and lognormal family[^8] are present though and these are also 
 
 [^8]: Not entirely sure if the random effects also follow a lognormal distribution here. My simulations (not shown) suggest a lognormal normal distribution so this would be different from log transforming the outcome and using our {brms} model. 
 
-You specify censoring using a `inla.surv` where left censoring is coded as $2$ and uncensored observations get a $1$ indicator:
+You specify censoring using a `inla.surv` where left-censoring is coded as $2$ and uncensored observations get a $1$ indicator:
 ```{r}
 #| output: false
 library(INLA)

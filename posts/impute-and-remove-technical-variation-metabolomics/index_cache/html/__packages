@@ -2,3 +2,4 @@ ggplot2
 patchwork
 StanHeaders
 rstan
+magrittr

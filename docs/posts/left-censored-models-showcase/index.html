@@ -9,7 +9,7 @@
 <meta name="author" content="Max J. Oosterwegel">
 <meta name="dcterms.date" content="2025-04-21">
 
-<title>Fitting left censored models using R – Max Oosterwegel – blog ( ._.)</title>
+<title>A guide to fitting left-censored models with R – Max Oosterwegel – blog ( ._.)</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -205,7 +205,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Fitting left censored models using R</h1>
+<h1 class="title">A guide to fitting left-censored models with R</h1>
 </div>
 
 
@@ -246,7 +246,7 @@ window.Quarto = {
 <section id="censoring" class="level1">
 <h1>Censoring</h1>
 <p>Every epidemiologist is familiar with the standard survival analysis example that describes right censored observations. In this example, some participants are lost to follow-up or do not experience the event during the study. As a result, for these participants we only know that a possible event occurred somewhere after our observation period. These observations are then said to be right censored at the end of this window.</p>
-<p>With the aforementioned instruments, the situation is flipped: we only know a value is <em>less</em> than a certain value. In these cases, our instrument can’t discern the analyte from background noise below a certain point. In other words, measurements on such an instrument were limited to a minimum measurement of <span class="math inline">\(l\)</span> so any measurement smaller than <span class="math inline">\(l\)</span> was recorded as <span class="math inline">\(l\)</span>. We refer to this minimum measurement as the limit of detection or limit of quantification and the data is said to be left censored at this limit<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. Measurements smaller than this simply cannot be measured with this instrument.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<p>With the aforementioned instruments, the situation is flipped: we only know a value is <em>less</em> than a certain value. In these cases, our instrument can’t discern the analyte from background noise below a certain point. In other words, measurements on such an instrument were limited to a minimum measurement of <span class="math inline">\(l\)</span> so any measurement smaller than <span class="math inline">\(l\)</span> was recorded as <span class="math inline">\(l\)</span>. We refer to this minimum measurement as the limit of detection or limit of quantification and the data is said to be left-censored at this limit<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. Measurements smaller than this simply cannot be measured with this instrument.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
 <p>Writing this in a more formal way, we can specify a latent regression model with an outcome that is either observed or unobserved:</p>
 <p><span class="math display">\[
 y_i^*= \begin{cases}y_i &amp; \text { if } y_i&gt;l \\
@@ -367,7 +367,7 @@ y_i^*= \begin{cases}\mathrm{N}\left(y_i \mid a+b x_i, \sigma^2\right) &amp; \tex
 </div>
 </section>
 <section id="fitting-a-left-censored-model-using-r" class="level1">
-<h1>Fitting a left censored model using R</h1>
+<h1>Fitting a left-censored model using R</h1>
 <p>We can fit a model in <code>R</code> that accounts for the censoring mechanism by writing down the likelihood and passing it to <code>optim</code> to find the maximum:<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>log_lik <span class="ot">&lt;-</span> <span class="cf">function</span>(parameter_vector, x, y, l) {</span>
@@ -407,7 +407,7 @@ y_i^*= \begin{cases}\mathrm{N}\left(y_i \mid a+b x_i, \sigma^2\right) &amp; \tex
 <p>Of course there are also <code>R</code> packages that can do such a procedure for us. Both frequentist and Bayesian. Below an overview:</p>
 <section id="survival" class="level3">
 <h3 class="anchored" data-anchor-id="survival">{survival}</h3>
-<p>In {survival} you can specify left censored models just as you would specify right censored models using the <code>Surv</code> object. The <code>censor_point</code> can also be a vector and thereby allow your observations to be censored at different levels/limits.</p>
+<p>In {survival} you can specify left-censored models just as you would specify right censored models using the <code>Surv</code> object. The <code>censor_point</code> can also be a vector and thereby allow your observations to be censored at different levels/limits.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survreg</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(y_obs,</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>                                      y_obs <span class="sc">&gt;</span> censor_point,</span>
@@ -434,7 +434,7 @@ Number of Newton-Raphson Iterations: 3
 n= 2000 </code></pre>
 </div>
 </div>
-<p>You can get the same result by specifying the left censoring as a special case of interval censoring:</p>
+<p>You can get the same result by specifying the left-censoring as a special case of interval censoring:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survreg</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(<span class="at">time =</span> <span class="fu">ifelse</span>(y_obs <span class="sc">==</span> censor_point, <span class="sc">-</span><span class="dv">999</span>, y_obs), </span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">time2 =</span> censor_point,</span>
@@ -500,7 +500,7 @@ Log-likelihood: -1587.58 on 3 Df</code></pre>
 </div>
 </section>
 <section id="multilevel-left-censored-models" class="level2">
-<h2 class="anchored" data-anchor-id="multilevel-left-censored-models">Multilevel left censored models</h2>
+<h2 class="anchored" data-anchor-id="multilevel-left-censored-models">Multilevel left-censored models</h2>
 <p>Sometimes your data is more complicated and you want to specify different levels of your data. For example: a random intercept that specifies what subject or batch an observation belongs to. Your <code>R</code> package options are more limited then, as the frequentist approach now needs to additionally integrate over the random effects in the definition of the marginal likelihood.</p>
 <p>The {survival} model does not support such models while {censReg} supports only a simple two-level random intercept model:</p>
 <div class="cell">
@@ -557,7 +557,7 @@ Log-likelihood: -1475.026 on 4 Df</code></pre>
 </section>
 <section id="glmmadaptive" class="level3">
 <h3 class="anchored" data-anchor-id="glmmadaptive">{GLMMadaptive}</h3>
-<p>One other frequentist package available for your left censored models is {GLMMadaptive}. In addition to your observed outcome, you need to specify a vector with an indicator variable that describes whether the observation was censored:</p>
+<p>One other frequentist package available for your left-censored models is {GLMMadaptive}. In addition to your observed outcome, you need to specify a vector with an indicator variable that describes whether the observation was censored:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> GLMMadaptive<span class="sc">::</span><span class="fu">mixed_model</span>(<span class="fu">cbind</span>(y_obs, censored) <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> x, </span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">random =</span> <span class="sc">~</span> <span class="dv">1</span><span class="sc">|</span>batch_id, </span>
@@ -621,7 +621,7 @@ converged: TRUE </code></pre>
 </section>
 <section id="brms-stan" class="level3">
 <h3 class="anchored" data-anchor-id="brms-stan">{brms} / {STAN}</h3>
-<p>For Bayesian software implementations the addition of random intercepts and slopes is less challenging, because it avoids the cumbersome integration. Similarly to {GLMMadaptive} we specify an additional indicator variable for our {brms} model, but this time left censoring is indicated by <span class="math inline">\(-1\)</span> (uncensored is <span class="math inline">\(0\)</span> in <code>brms</code> and <span class="math inline">\(1\)</span> indicates right censoring):</p>
+<p>For Bayesian software implementations the addition of random intercepts and slopes is less challenging, because it avoids the cumbersome integration. Similarly to {GLMMadaptive} we specify an additional indicator variable for our {brms} model, but this time left-censoring is indicated by <span class="math inline">\(-1\)</span> (uncensored is <span class="math inline">\(0\)</span> in <code>brms</code> and <span class="math inline">\(1\)</span> indicates right censoring):</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> brms<span class="sc">::</span><span class="fu">brm</span>(y_obs <span class="sc">|</span> <span class="fu">cens</span>(censored) <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> x <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>batch_id), </span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>               <span class="at">data =</span> df <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">censored =</span> censored <span class="sc">*</span> <span class="sc">-</span><span class="dv">1</span>), </span>
@@ -782,7 +782,7 @@ generated quantities {
 </section>
 <section id="mcmcglmm" class="level3">
 <h3 class="anchored" data-anchor-id="mcmcglmm">{MCMCglmm}</h3>
-<p>{MCMCglmm} also supports left censored multilevel (&gt;two-level?) models. The random effect notation is a bit <a href="https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q1/019896.html">different</a> though. The intercept is varying by subject here (random intercept), <code>random = ~us(1+fixed_effect):cluster</code> gives a random intercept/slope model with estimated covariance, and <code>random = ~idh(1+fixed_effect):cluster</code> is the same but with the covariance set to 0. We can specify a left censored outcome by creating two variables. If left censored, <code>y_obs_min</code> is <code>-Inf</code> and <code>y_obs_max</code> takes on the value of the censoring point, in the other, non censored cases <code>y_obs_min</code> and <code>y_obs_max</code> are identical and take on the observed value:</p>
+<p>{MCMCglmm} also supports left-censored multilevel (&gt;two-level?) models. The random effect notation is a bit <a href="https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q1/019896.html">different</a> though. The intercept is varying by subject here (random intercept), <code>random = ~us(1+fixed_effect):cluster</code> gives a random intercept/slope model with estimated covariance, and <code>random = ~idh(1+fixed_effect):cluster</code> is the same but with the covariance set to 0. We can specify a left-censored outcome by creating two variables. If left-censored, <code>y_obs_min</code> is <code>-Inf</code> and <code>y_obs_max</code> takes on the value of the censoring point, in the other, non censored cases <code>y_obs_min</code> and <code>y_obs_max</code> are identical and take on the observed value:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MCMCglmm)</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -849,7 +849,7 @@ units    0.4978472 0.009719887 9.719887e-05   0.0002157377</code></pre>
 </div>
 </div>
 <p>A censored gamma and lognormal family<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> are present though and these are also useful in environmental studies.</p>
-<p>You specify censoring using a <code>inla.surv</code> where left censoring is coded as <span class="math inline">\(2\)</span> and uncensored observations get a <span class="math inline">\(1\)</span> indicator:</p>
+<p>You specify censoring using a <code>inla.surv</code> where left-censoring is coded as <span class="math inline">\(2\)</span> and uncensored observations get a <span class="math inline">\(1\)</span> indicator:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(INLA)</span>
 <span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -1001,7 +1001,7 @@ Senn, Stephen, Nick Holford, and Hans Hockey. 2012. <span>“The Ghosts of Depar
 <li id="fn1"><p>Not to be confused with left truncation. In both truncation and censoring no information on the value of the observation beyond the truncation/censoring point is available. However, with censoring we know the number of observations beyond this point contrary to truncation where we do not observe any of the dependent variable or covariates – the entry is simply missing from your data table. See for example <span class="citation" data-cites="senn2012ghosts">Senn, Holford, and Hockey (<a href="#ref-senn2012ghosts" role="doc-biblioref">2012</a>)</span> and <span class="citation" data-cites="gelman2013bayesian">Andrew Gelman et al. (<a href="#ref-gelman2013bayesian" role="doc-biblioref">2013</a>)</span>, p.224 for a more in depth explanation on the statistical connections between truncation and censoring.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>While I have not encountered it myself, I have read that (some) mass spectrometry instruments can also reach saturation. This will not be the topic of this post. I think though that saturation would introduce an additional right censoring mechanism or some type of non-linear effect – again not sure how this gets handled in practice.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>In this post we assume the limit of detection is known, but this need not always be the case. See for example <span class="citation" data-cites="gelman2013bayesian">Andrew Gelman et al. (<a href="#ref-gelman2013bayesian" role="doc-biblioref">2013</a>)</span>, p.226 on how to handle this.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>The classical tobit model from economics <a href="https://rdrr.io/cran/AER/man/tobit.html">assumes a normal distribution for outcome variable with left censoring at 0</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>The classical tobit model from economics <a href="https://rdrr.io/cran/AER/man/tobit.html">assumes a normal distribution for outcome variable with left-censoring at 0</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>Via <span class="citation" data-cites="gelman2006data">A. Gelman and Hill (<a href="#ref-gelman2006data" role="doc-biblioref">2006</a>)</span> and <a href="https://m-clark.github.io/models-by-example/tobit.html">Michael Clark</a> his post.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>Though there seem to be some questions on if {censReg} is doing it <a href="https://stat.ethz.ch/pipermail/r-sig-mixed-models/2021q3/029715.html">correctly</a> (per the author of the {GLMMadaptive} package).<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn7"><p>Unfortunately <a href="https://github.com/paul-buerkner/brms/issues/565">no censored predictors yet</a>.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
@@ -1011,15 +1011,15 @@ Senn, Stephen, Nick Holford, and Hans Hockey. 2012. <span>“The Ghosts of Depar
 </ol>
 </section><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{j._oosterwegel2025,
   author = {J. Oosterwegel, Max},
-  title = {Fitting Left Censored Models Using {R}},
+  title = {A Guide to Fitting Left-Censored Models with {R}},
   date = {2025-04-21},
   url = {https://maxoosterwegel.com/posts/left-censored-models-showcase/},
   doi = {placeholder},
   langid = {en}
 }
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-j._oosterwegel2025" class="csl-entry quarto-appendix-citeas" role="listitem">
-J. Oosterwegel, Max. 2025. <span>“Fitting Left Censored Models Using
-R.”</span> April 21, 2025. <a href="https://doi.org/placeholder">https://doi.org/placeholder</a>.
+J. Oosterwegel, Max. 2025. <span>“A Guide to Fitting Left-Censored
+Models with R.”</span> April 21, 2025. <a href="https://doi.org/placeholder">https://doi.org/placeholder</a>.
 </div></div></section></div></main> <!-- /main -->
 <script data-goatcounter="https://maxoosterwegel.goatcounter.com/count" async="" src="//gc.zgo.at/count.js"></script>
 <script id="quarto-html-after-body" type="application/javascript">
