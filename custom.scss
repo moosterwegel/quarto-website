@@ -1,76 +1,75 @@
 /*-- scss:defaults --*/
 /* ibm-plex-mono-regular - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'IBM Plex Mono';
   font-style: normal;
   font-weight: 400;
-  src: url('/fonts/ibm-plex-mono-v19-latin-regular.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/ibm-plex-mono-v19-latin-regular.woff2') format('woff2');
 }
 
 /* ibm-plex-sans-regular - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 400;
-  src: url('/fonts/ibm-plex-sans-v21-latin-regular.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/ibm-plex-sans-v21-latin-regular.woff2') format('woff2');
 }
 /* ibm-plex-sans-italic - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'IBM Plex Sans';
   font-style: italic;
   font-weight: 400;
-  src: url('/fonts/ibm-plex-sans-v21-latin-italic.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/ibm-plex-sans-v21-latin-italic.woff2') format('woff2');
 }
 
 /* atkinson-hyperlegible-regular - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'Atkinson Hyperlegible';
   font-style: normal;
   font-weight: 400;
-  src: url('/fonts/atkinson-hyperlegible-v11-latin-regular.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-regular.woff2') format('woff2');
 }
 /* atkinson-hyperlegible-italic - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'Atkinson Hyperlegible';
   font-style: italic;
   font-weight: 400;
-  src: url('/fonts/atkinson-hyperlegible-v11-latin-italic.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-italic.woff2') format('woff2');
 }
 /* atkinson-hyperlegible-700 - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'Atkinson Hyperlegible';
   font-style: normal;
   font-weight: 700;
-  src: url('/fonts/atkinson-hyperlegible-v11-latin-700.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-700.woff2') format('woff2');
 }
 
 /* scope-one-regular - latin */
 @font-face {
-  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-display: swap;
   font-family: 'Scope One';
   font-style: normal;
   font-weight: 400;
-  src: url('/fonts/scope-one-v14-latin-regular.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+  src: url('/fonts/scope-one-v14-latin-regular.woff2') format('woff2');
 }
 
 $grid-body-width: 700px;
-$grid-sidebar-width: 300px; 
-$grid-margin-width: 300px; 
-$grid-column-gutter-width: 1.5rem; 
+$grid-sidebar-width: 300px;
+$grid-margin-width: 300px;
+$grid-column-gutter-width: 1.5rem;
 $link-color: #5B1317; // "#643D35" "#1D323E" "#5B1317" "#134263" old: #7b292b
 $base-font-size: 16px;
 
 /*-- scss:rules --*/
-$web-font-path: false; 
+$web-font-path: false;
 
 body {
-  font-family: "Scope One", sans-serif !important;
   font-family: "IBM Plex Sans", sans-serif !important;
 }
 
@@ -104,32 +103,21 @@ html {
   overflow-y: scroll;
 }
 
-// remove whitespace before navigation bar and align with body
-.navbar.navbar-expand-lg {
-  padding-left: 0px !important;
-  padding-right: 0px !important;
+// remove whitespace before navigation bar, align with body, and handle about page alignment
+.navbar.navbar-expand-lg,
+.navbar-container.container-fluid,
+.nav-link { // .nav-link also covers .nav-link.active for these properties
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
-.navbar-container.container-fluid {
-  padding-left: 0px !important;
-  padding-right: 0px !important;
+// needed to align about page navbar
+.navbar-expand-lg,
+.navbar-nav {
+  padding-left: 0;
+  padding-right: 0;
 }
 
-.nav-link.active {
-  padding-left: 0px !important;
-  padding-right: 0px !important;
-}
-
-.nav-link {
-  padding-left: 0px !important;
-  padding-right: 0px !important;
-}
-
-// needed for the about page
-.navbar-expand-lg, .navbar-nav, .nav-link {
-    padding-left: 0px;
-    padding-right: 0px;
-}
 
 // make sure menu items have consistent spacing
 .navbar-nav {
@@ -137,7 +125,7 @@ html {
 }
 
 .nav-item {
-  padding-right: 1rem !important; 
+  padding-right: 1rem !important;
 }
 
 // fix the last item padding alignment with body
@@ -152,8 +140,8 @@ html {
 
 // footer decrease font size, avoid line breaks
 .nav-footer .nav-item {
-  font-size: 13px; 
-  padding: 4px 8px; 
+  font-size: 13px;
+  padding: 4px 8px;
   display: inline-block; /* helps prevent breaking */
   white-space: nowrap; /* prevents wrapping */
 }
@@ -164,37 +152,35 @@ html {
 
 // remove whitespace above table listing page
 main.content#quarto-document-content {
-  margin-top: 0em !important;
-  margin-bottom: 0em !important;
-  padding-top: 0px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
 }
 
 // meta info article one line
 #title-block-header.quarto-title-block.default .quarto-title-meta {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-column-gap: 1em;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-column-gap: 1em;
 }
 
 // font sizes/types blog pages
-.content#quarto-document-content { 
-  .quarto-title {
-  h1 {
-    font-size: calc(1.34rem + 0.9vw)
-  }
-}
-}
-
 .content#quarto-document-content {
-    h1, .h1, h2, .h2, h3, .h3 {
+  .quarto-title {
+    h1 {
+      font-size: calc(1.34rem + 0.9vw);
+    }
+  }
+
+  h1, .h1, h2, .h2, h3, .h3 {
     //  font-weight: bold;
-      color: #1D323E; 
-      font-family: "Atkinson Hyperlegible";
+    color: #1D323E;
+    font-family: "Atkinson Hyperlegible";
   }
 }
 
 h1, .h1 {
-  font-size: calc(1.27rem + 0.48vw)
+  font-size: calc(1.27rem + 0.48vw);
 }
 
 h2, .h2 {
@@ -221,7 +207,6 @@ p > code, li > code, span > code {
 // break up word if too long
 p, li {
   hyphens: auto;
-  // Include vendor prefixes for older browser compatibility, though less needed now
   -webkit-hyphens: auto; // Safari
   -moz-hyphens: auto;    // Firefox (older versions)
   -ms-hyphens: auto;     // IE/Edge (older versions)
