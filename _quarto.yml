@@ -29,6 +29,7 @@ website:
     title: false
     background: "#FFFFFF"
     foreground: "dark"
+    collapse-below: "sm"
     left:
       - text: "home"
         href: index.qmd

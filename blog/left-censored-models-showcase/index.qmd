@@ -1,0 +1,428 @@
+---
+title: "A guide to fitting left-censored models with R"
+date: "2025-04-21"
+format: 
+  html: 
+      echo: true
+      message: false
+      warning: false
+      code-fold: false
+execute: 
+  cache: true
+citation: true
+bibliography: references.bib
+---
+In environmental epidemiology -- and environmental studies more generally -- we often aim to detect trace levels of pollutants, metabolites, or biomarkers. Be it in a biospecimen like blood and urine or in environmental media such as soil, water, and air. This can be done with [liquid/gas chromatography mass spectrometry instruments](https://en.wikipedia.org/wiki/Gas_chromatography%E2%80%93mass_spectrometry) among others. Even though these instruments are very sensitive these days, they will sometimes hit their detection limits. This blog posts will briefly go over on how to handle such data statistically speaking, and what options are available in `R` to fit these models. 
+
+# Censoring
+Every epidemiologist is familiar with the standard survival analysis example that describes right-censored observations. In this example, some participants are lost to follow-up or do not experience the event during the study. As a result, for these participants we only know that a possible event occurred somewhere after our observation period. These observations are then said to be right-censored at the end of this window.
+
+With the aforementioned instruments, the situation is flipped: we only know a value is _less_ than a certain value. In these cases, our instrument can't discern the analyte from background noise below a certain point. In other words, measurements on such an instrument were limited to a minimum measurement of $l$ so any measurement smaller than $l$ was recorded as $l$. We refer to this minimum measurement as the limit of detection or limit of quantification and the data is said to be left-censored at this limit[^1]. Measurements smaller than this simply cannot be measured with this instrument.[^2]
+
+[^1]: Not to be confused with left truncation. In both truncation and censoring no information on the value of the observation beyond the truncation/censoring point is available. However, with censoring we know the number of observations beyond this point contrary to truncation where we do not observe any of the dependent variable or covariates -- the entry is simply missing from your data table. See for example @senn2012ghosts and @gelman2013bayesian, p.224 for a more in depth explanation on the statistical connections between truncation and censoring.
+
+[^2]: While I have not encountered it myself, I have read that (some) mass spectrometry instruments can also reach saturation. This will not be the topic of this post. I think though that saturation would introduce an additional right-censoring mechanism or some type of non-linear effect -- again not sure how this gets handled in practice.
+
+Writing this in a more formal way, we can specify a latent regression model with an outcome that is either observed or unobserved:
+
+$$
+y_i^*= \begin{cases}y_i & \text { if } y_i>l \\
+l & \text { if } y_i \leq l \end{cases}
+$$
+where $y_i$ represents the 'true', latent values, $y_i^*$ are values we observe in reality, and $l$ is the limit of detection[^3].
+
+[^3]: In this post we assume the limit of detection is known, but this need not always be the case. See for example @gelman2013bayesian, p.226 on how to handle this.
+
+In most environmental studies (and the classical tobit model from economics)[^4] we then assume a normally distributed error term for the true values $y_i$ so we write 
+
+[^4]: The classical tobit model from economics [assumes a normal distribution for outcome variable with left-censoring at 0](https://rdrr.io/cran/AER/man/tobit.html).
+
+$$
+y_i \sim \mathrm{~N}\left(a+b x_i, \sigma^2\right), \text { for } i=1, \ldots, n
+$$
+We can then estimate the parameters of the underlying distribution using the _observed_ data $y_i^*$ by including a separate term for the censoring mechanism in the likelihood:
+
+$$
+\operatorname{Pr}\left(y_i \leq l\right)=\int_{-\infty}^{l} \mathrm{N}\left(y_i \mid a+b x_i, \sigma^2\right)=  \Phi\left(\frac{l - (a+b x_i)}{\sigma}\right)
+$$
+such that the two terms of the likelihood become
+$$
+y_i^*= \begin{cases}\mathrm{N}\left(y_i \mid a+b x_i, \sigma^2\right) & \text { if } y_i>l \\
+\Phi\left(\frac{l - (a+b x_i)}{\sigma}\right) & \text { if } y_i \leq l \end{cases}
+$$
+with the likelihood for the uncensored data points just being the normal probability density function.
+
+Visually, the densities of $y$ and $y^*$ looks as follows:
+
+```{r}
+#| echo: false
+set.seed(2025)
+```
+
+```{r}
+#| code-fold: true
+#| fig-height: 2.5
+n <- 100000
+prop_censored <- 0.3
+y <- rnorm(n)
+censor_point <- quantile(y, prop_censored)
+censored <- y <= censor_point
+y_obs <- ifelse(censored, censor_point, y)
+y_dens <- density(y, n = n)
+y_obs_dens <- density(y_obs, n = n)
+
+library(ggplot2)
+df_y_dens <- tibble::tibble(dens_x = y_dens$x,
+                            dens_y = y_dens$y,
+                            censor_point = censor_point,
+                            type = "true")
+
+df_y_dens_obs <- tibble::tibble(dens_x = y_obs_dens$x,
+                                dens_y = y_obs_dens$y,
+                                censor_point = censor_point,
+                                type = "observed")
+
+theme_set(theme_minimal() +
+            theme(axis.line = element_line(colour = "black", linewidth = rel(1)),
+                  panel.border = element_blank()))
+
+ggplot(mapping = aes(x = dens_x, y = dens_y)) +
+  geom_line(data = df_y_dens, linewidth = 0.9,
+            aes(color = "True values"), linetype = "dotted") +
+  geom_line(data = subset(df_y_dens_obs, dens_x > censor_point), 
+            linewidth = 0.9,
+            aes(color = "Observed values")) +
+  geom_vline(aes(xintercept = censor_point, color = "Censor point"), 
+             linetype = "dashed", linewidth = 1) +
+  geom_area(data = subset(df_y_dens, dens_x <= censor_point),
+            fill = "#822D2F",
+            aes(color = "Censored values")) +  
+  labs(x = "Density") +
+  scale_color_manual(name = "",
+                     values = c("True values" = "black", 
+                                "Observed values" = "#375A6D", 
+                                "Censor point" = "black", 
+                                "Censored values" = "#822D2F")) +
+  theme_minimal() +
+  theme(axis.title = element_blank(),  
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = c(0.1, 0.8))
+
+```
+so informally speaking, by virtue of the data being censored and not truncated we know the height of the probability mass and when we combine this information with the information from the uncensored observations, and the assumption we made on its distributional form we can 'spread out' the probability mass across the censored region and estimate the parameters of the latent/true data structure.
+
+If we additionally simulate an effect of $x$ on $y$ and plot $x$ vs $y$ we can easily see that ignoring the censoring mechanism (or substituting by a constant value below the limit of detection as is often done -- not shown) biases the estimate of the slope. 
+
+```{r}
+n <- 2000
+prop_censored <- 0.3
+b_1 <- 0.1
+sd <- 0.5
+
+x <- rnorm(n)
+y <-  rnorm(n, x * b_1, sd)
+censor_point <- quantile(y, prop_censored)
+censored <- y <= censor_point
+y_obs <- ifelse(censored, censor_point, y)
+
+df <- tibble::tibble(y, y_obs, x, censor_point)
+```
+
+```{r}
+#| fig-height: 3
+#| code-fold: true
+df |> 
+  ggplot() + 
+  geom_point(aes(x = x, y = y_obs), color = '#375A6D') +
+  geom_point(data = subset(df, y <= censor_point),
+             aes(x = x, y = y), color = '#822D2F') +
+  geom_smooth(aes(x = x, y = y_obs, color = "Observed values fit"), 
+              method = "lm", linetype = "solid") +
+  geom_smooth(aes(x = x, y = y, color = "True values fit"), 
+              method = 'lm', linetype = "dotted") +
+  scale_color_manual(name = "",
+                     values = c("True values fit" = "dotted", "Observed values fit" = "solid")) +
+  scale_color_manual(name = "",
+                     values = c("True values fit" = "black", "Observed values fit" = "black")) +
+  labs(x = expression(x),
+       y = expression(y)) +
+  theme(legend.position = c(0.15, 0.9))
+```
+
+# Fitting a left-censored model using R
+We can fit a model in `R` that accounts for the censoring mechanism by writing down the likelihood and passing it to `optim` to find the maximum:[^5]
+
+```{r}
+log_lik <- function(parameter_vector, x, y, l) {
+  a <- parameter_vector[1]
+  b <- parameter_vector[2]
+  sigma <- parameter_vector[3]
+  
+  linear_predictor <- a + b*x
+  
+  # you could also do this more explicitly with an indicator variable and a multiplication 
+  ll_vec <- ifelse(y > l, 
+                   dnorm(y, linear_predictor, sigma, log = TRUE),
+                   pnorm((l - linear_predictor)/sigma, log = TRUE))
+  
+  return(sum(ll_vec))
+}
+
+# initialize with a fit from the observed data, inits <- runif(3) will also work for simple models
+initmod <- lm(y_obs ~ 1 + x, data = df)
+print(c(coef(initmod), sigma = summary(initmod)$sigma))
+init <- c(coef(initmod), sigma = log(summary(initmod)$sigma))
+
+mle <- optim(init, log_lik, lower = c(-Inf,-Inf, 1.e-5),
+             method = "L-BFGS-B", control = list(fnscale = -1), 
+             x = df[['x']], y = df[['y_obs']], l = censor_point)
+mle$par
+```
+We can see that the procedure managed to recover the true values for $\sigma$ (= 0.5) and $\beta_1$ (= 0.1). 
+
+[^5]: Via @gelman2006data and [Michael Clark](https://m-clark.github.io/models-by-example/tobit.html) his post.
+
+Of course there are also `R` packages that can do such a procedure for us. Both frequentist and Bayesian. Below an overview:
+
+### {survival}
+In {survival} you can specify left-censored models just as you would specify right-censored models using the `Surv` object. The `censor_point` can also be a vector and thereby allow your observations to be censored at different levels/limits.
+```{r}
+m <- survival::survreg(survival::Surv(y_obs,
+                                      y_obs > censor_point,
+                                      type = "left") ~ 1 + x,
+                       data = df,
+                       dist = "gaussian")
+summary(m)
+```
+You can get the same result by specifying the left-censoring as a special case of interval censoring:
+
+```{r}
+m <- survival::survreg(survival::Surv(time = ifelse(y_obs == censor_point, -999, y_obs), 
+                                      time2 = censor_point,
+                                      event = ifelse(y_obs == censor_point, 3, 1), 
+                                      type = "interval") ~ 1 + x, 
+                       data = df,
+                       dist = "gaussian")
+summary(m)
+```
+There's also a lognormal distribution available in {survival}. 
+
+### {censReg}
+{censReg} does not support varying censoring points, as the `left` argument only allows a constant, whereas {survival} allows this by specifying a `censor_point` vector. 
+```{r}
+m <- censReg::censReg(y_obs ~ 1 + x, 
+                      data = df, 
+                      method = "BHHH", 
+                      left = min(df$y_obs), right = Inf)
+summary(m)
+```
+
+## Multilevel left-censored models
+Sometimes your data is more complicated and you want to specify different levels of your data. For example: a random intercept that specifies what subject or batch an observation belongs to. Your `R` package options are more limited then, as the frequentist approach now needs to additionally integrate over the random effects in the definition of the marginal likelihood. 
+
+The {survival} model does not support such models while {censReg} supports only a simple two-level random intercept model:
+```{r}
+samples_p_batch <- 100
+nr_batches <- n/samples_p_batch
+sd_batch <- 2
+
+re_batch <- rep(rnorm(nr_batches, 0, sd_batch), each = samples_p_batch)
+y <-  rnorm(n, x * b_1 + re_batch, sd)
+
+censor_point <- quantile(y, prop_censored)
+censored <- y <= censor_point
+y_obs <- ifelse(censored, censor_point, y)
+
+df <- tibble::tibble(y, y_obs, x, censor_point, 
+                     index = rep(1:samples_p_batch, times = nr_batches),
+                     batch_id = rep(1:nr_batches, each = samples_p_batch))
+```
+
+### {censReg}
+To get such a two-level random intercept model to work in {censReg} we have to create a {plm} object first[^6]
+
+[^6]: Though there seem to be some questions on if {censReg} is doing it [correctly](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2021q3/029715.html) (per the author of the {GLMMadaptive} package). 
+```{r}
+pData <- plm::pdata.frame(df, c( "batch_id", "index"))
+
+m <- censReg::censReg(y_obs ~ 1 + x, 
+                      data = pData, 
+                      method = "BHHH", 
+                      left = min(df$y_obs), right = Inf)
+summary(m)
+```
+
+### {GLMMadaptive}
+One other frequentist package available for your left-censored models is {GLMMadaptive}. In addition to your observed outcome, you need to specify a vector with an indicator variable that describes whether the observation was censored:
+```{r}
+m <- GLMMadaptive::mixed_model(cbind(y_obs, censored) ~ 1 + x, 
+                               random = ~ 1|batch_id, 
+                               data = df,
+                               family = GLMMadaptive::censored.normal())
+summary(m)
+```
+We can also use random slopes in GLMMadaptive. But only a single grouping factor (i.e., no nested (i.e. 2+ levels) or crossed random effects designs) is [supported](https://cran.r-project.org/web/packages/GLMMadaptive/vignettes/GLMMadaptive.html) at the moment. {GLMMadaptive} is relatively fast. Unfortunately, when I had to fit more than 20 of these models for projects at least one of those models had convergence issues/errors. But perhaps someone with more feel for optimizer parameters is more successful.
+
+And contrary to {censReg} you can extract the random effects:
+
+```{r}
+GLMMadaptive::ranef(m) |> head()
+```
+
+
+### {brms} / {STAN}
+For Bayesian software implementations the addition of random intercepts and slopes is less challenging, because it avoids the cumbersome integration. Similarly to {GLMMadaptive} we specify an additional indicator variable for our {brms} model, but this time left-censoring is indicated by $-1$ (uncensored is $0$ in `brms` and $1$ indicates right-censoring):
+
+```{r}
+#| echo: false
+cmdstanr::set_cmdstan_path("C:/Users/Max/Documents/.cmdstan/cmdstan-2.34.1")
+```
+
+```{r}
+m <- brms::brm(y_obs | cens(censored) ~ 1 + x + (1|batch_id), 
+               data = df |> dplyr::mutate(censored = censored * -1), 
+               seed = 2025, refresh = 1000,
+               backend = "cmdstanr", cores = 4)
+```
+
+```{r}
+summary(m)
+```
+If we print the actual STAN code we see familiar elements from our earlier likelihood:
+```{r}
+brms::stancode(m)
+```
+
+With {brms} the possibilities are almost endless[^7] and fortunately its speed has also improved the last few years. My censored models usually converge out of the box, even with multiple random intercept terms. And with some reasonably strong priors I've also had success with high proportions of censored data (say >80%).
+
+[^7]: Unfortunately [no censored predictors yet](https://github.com/paul-buerkner/brms/issues/565).
+
+### {MCMCglmm}
+{MCMCglmm} also supports left-censored multilevel (>two-level?) models. The random effect notation is a bit [different](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q1/019896.html) though. The intercept is varying by subject here (random intercept), `random = ~us(1+fixed_effect):cluster` gives a random intercept/slope model with estimated covariance, and `random = ~idh(1+fixed_effect):cluster` is the same but with the covariance set to 0. We can specify a left-censored outcome by creating two variables. If left-censored, `y_obs_min` is `-Inf` and `y_obs_max` takes on the value of the censoring point, in the other, non censored cases `y_obs_min` and `y_obs_max` are identical and take on the observed value:
+```{r}
+#| output: false
+library(MCMCglmm)
+
+m <- MCMCglmm::MCMCglmm(cbind(y_obs_min, y_obs_max) ~ 1 + x , 
+                        random = ~ batch_id, 
+                        family = "cengaussian", 
+                        data = df |> 
+                          dplyr::mutate(y_obs_min = ifelse(censored == 1, -Inf, y_obs),
+                                        y_obs_max = ifelse(censored == 1, censor_point, y_obs)) |>
+                          data.frame(),
+                        nitt = 20000, thin = 1, burnin = 10000,
+                        verbose = FALSE)
+```
+
+```{r}
+summary(m)
+```
+
+
+The G structure [refers](https://stats.stackexchange.com/questions/32994/what-are-r-structure-g-structure-in-a-glmm) to the random effect structure, while the R structure is the residual structure.
+
+I think by default you do not get easy interpretable scale parameters, but you can [obtain](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2013q2/020390.html) an estimate by taking the square root of the posterior distribution of the (co)variance matrices:
+
+```{r}
+summary(sqrt(m$VCV))[[1]]
+```
+
+### {INLA}
+Lastly I want to mention the {INLA} package. It seems like it's neither purely frequentist nor fully Bayesian but instead _approximates_ the posterior marginals. It's mostly used in spatial statistics so perhaps this makes it the ideal candidate for censored concentration measurements with a spatial element, say a measurement campaign. Its interface is slightly unusual for the `R` regression packages I'm familiar with, but it is very, very fast! Many censored likelihood families are supported, but unfortunately the Gaussian family is not one of them:
+```{r}
+names(INLA::inla.models()$likelihood) |> 
+    purrr::keep(~stringr::str_detect(.x, "surv"))
+```
+A censored gamma and lognormal family[^8] are present though and these are also useful in environmental studies. 
+
+[^8]: Not entirely sure if the random effects also follow a lognormal distribution here. My simulations (not shown) suggest a lognormal normal distribution so this would be different from log transforming the outcome and using our {brms} model. 
+
+You specify censoring using a `inla.surv` where left-censoring is coded as $2$ and uncensored observations get a $1$ indicator:
+```{r}
+#| output: false
+library(INLA)
+
+# simulate lognormal data
+samples_p_batch <- 100
+nr_batches <- n/samples_p_batch
+sd_batch <- 2
+
+re_batch <- rep(rnorm(nr_batches, 0, sd_batch), each = samples_p_batch)
+y <-  rlnorm(n, x * b_1 + re_batch, sd)
+
+censor_point <- quantile(y, prop_censored)
+censored <- y <= censor_point
+y_obs <- ifelse(censored, censor_point, y)
+
+df <- tibble::tibble(y, y_obs, x, censor_point, 
+                     index = rep(1:samples_p_batch, times = nr_batches),
+                     batch_id = rep(1:nr_batches, each = samples_p_batch)) |> 
+  dplyr::mutate(censored = ifelse(censored == 1, 2, 1))
+
+surv_obj <- inla.surv(df$y_obs, df$censored)
+m <- inla(surv_obj ~ 1 + x + f(batch_id, model = "iid"), 
+          data = df, 
+          family = "lognormal.surv", control.compute = list(config = TRUE))
+```
+
+```{r}
+summary(m)
+```
+The random effects estimates are expressed on the precision scale but you can do the following to obtain the variance of the random effects on a familiar scale:[^9]
+
+[^9]: See for example [https://becarioprecario.bitbucket.io/inla-gitbook/ch-survival.html](https://becarioprecario.bitbucket.io/inla-gitbook/ch-survival.html) and [https://www.paulamoraga.com/book-geospatial/sec-inla.html](https://becarioprecario.bitbucket.io/inla-gitbook/ch-survival.html) for more information on how to work with {INLA}.
+
+```{r}
+#| output: false
+v1 <- m |> purrr::pluck("internal.marginals.hyperpar", 
+                        "Log precision for batch_id")
+v2 <- m |> purrr::pluck("internal.marginals.hyperpar", 
+                        "Log precision for the lognormalsurv observations")
+
+v1p <- inla.tmarginal(function(x) 1/exp(x), v1) 
+v2p <- inla.tmarginal(function(x) 1/exp(x), v2)
+
+r <- dplyr::bind_rows(
+  inla.zmarginal(v1p) |> tibble::as_tibble() |> dplyr::mutate(variable = "batch_id"),
+  inla.zmarginal(v2p) |> tibble::as_tibble() |> dplyr::mutate(variable = "residual"))
+```
+```{r}
+ r |> 
+  dplyr::mutate(mean = sqrt(mean))
+```
+You can also access the posterior through `INLA::inla.posterior.sample`.
+
+Compared to {brms}, {INLA} needs much stronger priors on random intercepts in a censored (lognormal) model in my experience. I have yet to encounter a real-life scenario where it could reliably do with a noninformative prior. Perhaps this is simply a consequence of the lognormal family or the combination of the lognormal family and some parameter space definition difference I'm not aware of, but I often have had to specify priors like these
+```{r}
+halfcauchy  = "expression:
+  sigma = exp(-theta/2);
+  gamma = 0.1;
+  log_dens = log(2) - log(pi) - log(gamma);
+  log_dens = log_dens - log(1 + (sigma / gamma)^2);
+  log_dens = log_dens - log(2) - theta / 2;
+  return(log_dens);
+"
+hcpriorlist = list(prec = list(prior = halfcauchy))
+
+m <- inla(surv_obj ~ 1 + f(batch_id, model = "iid", hyper = hcpriorlist), 
+          data = df, family = "lognormal.surv", 
+          control.compute = list(config = TRUE))
+```
+for good frequentist coverage properties -- with less strong priors there would be huge outliers where some simulations had an estimated mean a couple magnitudes higher.
+
+## Other packages
+There are [other packages available](https://cran.r-project.org/web/views/MixedModels.html) to fit these kinds of models that I have not covered here: {nlmixr2}, {ARpLMEC}, {lme4cens}, {gamlss} (supposedly also multilevel?), and {lmec} but they are either minimally used and validated[^10], or were somewhat clunky to use for me. There's also talks to support censored regression models in [{glmmTMB}](https://github.com/glmmTMB/glmmTMB/issues/690). And there's the {AER} package, but it seems like that is just a [wrapper](https://m-clark.github.io/models-by-example/tobit.html) for the {survival} library with less functionality (i.e. no varying censoring points).
+
+[^10]: We are probably overconfident in statistical software and do not evaluate them sufficiently before using them in our work. See [this post from Alex Hayes](https://www.alexpghayes.com/post/2019-06-07_testing-statistical-software/) for some thoughts on checking statistical software.
+
+```{r}
+#| echo: false
+session_info <- capture.output(sessionInfo())
+writeLines(session_info, "session_info.txt")
+```
+
+---
+nocite: |
+  @gelman2006data, @gelman2021regression, @helsel_fabricating_2006, @helsel2005nondetects
+---

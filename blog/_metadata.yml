@@ -1,0 +1,23 @@
+# freeze computational output
+# (see https://quarto.org/docs/projects/code-execution.html#freeze)
+freeze: true
+
+# Enable banner style title blocks
+title-block-banner: false
+
+# Default author
+author:
+  - name: 
+      given: Max J. 
+      family: Oosterwegel
+    url: https://maxoosterwegel.com/
+    orcid: 0000-0003-3991-2632
+doi: placeholder
+
+comments:
+  giscus:
+    repo: moosterwegel/quarto-website
+    category: Announcements
+    
+quarto-template-params:
+    banner-header-class: "blog-post"

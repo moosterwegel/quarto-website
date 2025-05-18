@@ -1,6 +1,6 @@
 ---
 listing:
-  contents: posts
+  contents: blog
   template: blogs_listing.ejs
   sort: "date desc"
   # type: table

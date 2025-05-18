@@ -104,15 +104,24 @@ html {
 }
 
 // remove whitespace before navigation bar, align with body, and handle about page alignment
-.navbar.navbar-expand-lg,
+.navbar.navbar-expand-sm,
 .navbar-container.container-fluid,
 .nav-link { // .nav-link also covers .nav-link.active for these properties
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
 
+// when in mobile view etc. add margins to hamburger menu
+@media (max-width: 575.98px) { 
+  .navbar.navbar-expand-sm,
+  .navbar-container.container-fluid,
+  .nav-link { // .nav-link also covers .nav-link.active for these properties
+    padding-left: 0.5em !important;
+  }
+}
+
 // needed to align about page navbar
-.navbar-expand-lg,
+.navbar-expand-sm,
 .navbar-nav {
   padding-left: 0;
   padding-right: 0;
@@ -138,12 +147,24 @@ html {
   text-decoration: underline;
 }
 
+// Put all the icons in a single row in the hamburger menu (via https://github.com/andrewheiss/ath-quarto/)
+.navbar-nav.navbar-nav-scroll.ms-auto {
+    flex-direction: row;
+}
+
 // footer decrease font size, avoid line breaks
 .nav-footer .nav-item {
   font-size: 13px;
   padding: 4px 8px;
   display: inline-block; /* helps prevent breaking */
   white-space: nowrap; /* prevents wrapping */
+}
+
+@media (max-width: 699.98px) { 
+  .nav-footer .nav-item {
+    display: inline-block; /* helps prevent breaking */
+    white-space: wrap; /* prevents wrapping */
+  }
 }
 
 .nav-footer .nav-link {

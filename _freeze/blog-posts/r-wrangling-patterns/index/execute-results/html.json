@@ -1,0 +1,15 @@
+{
+  "hash": "7ec3af9294fa200044d1aed8e1930ce5",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"Some small recurring data wrangling patterns of mine\"\ndraft: true\ndate: \"2025-07-20\"\nexecute:\n  echo: false\n  message: false\n  warning: false\n  code-fold: true\n---\n\nI've had the fortune to wrangle a lot of data during my PhD and I thought I would write down some of the recurring patterns in my workflows. This blog posts is mainly meant for colleagues but perhaps it will be useful to a wider audience. \n\n# To map, map-map, or to nest map?\nOften I have to fit the same model to thousands of metabolomic features. You could of course just write a for-loop, but my problems are often embarrassingly parallel and if I use furrr::future_map (or purrr::map these days)[https://purrr.tidyverse.org/dev/reference/parallelization.html] it's trivial to parallize the code. \n\n\n::: {.cell}\n\n:::\n\n\n\n::: {.cell}\n\n:::\n\n\n\n::: {.cell}\n\n:::\n\n\n\n::: {.cell}\n\n:::\n\nThis often involves converting the data to long format first. I think this is very elegant and transparent, but I have run into memory issues on the virtual research environments we are often required to use. Fitting tens of thousands of models and keeping both the models and data constantly into memory for all your analyses adds up! \n\nI'm also a bit worried about the readability for people who are not used to this pattern. The goal of sharing code and by extension of writing good code, is documentation, reproducibility and demonstration. We mainly need code that's easy to understand for non-experts. So perhaps we need to optimize for readability for non coding 'experts' and not for aesthetics. \n\nI have a similar feeling about make files and target pipelines. It's fantastic for reproducibility -- it's only one line of code away now -- but many colleagues -- whether we like it or not -- now have more trouble in verifying the code's correctness. Maybe AI will make this substantially easier, I don't know, but for now I'm afraid these pipelines obscure rather than ... . If the data is also openly available this may be another story. \n\n()[https://x.com/carlislerainey/status/1750902519868637583]\n\n\n# Nest, pull, walk\n\n::: {.cell}\n\n:::\n\n\n# `pivot_wider values_fn map(unlist)\n\n::: {.cell}\n\n:::\n\nGet a list with lists of the members per class\n\n# Expand grid pmap for simulations\n\n::: {.cell}\n\n:::\n\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

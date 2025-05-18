@@ -2,9 +2,9 @@
   {
     "listing": "/index.html",
     "items": [
-      "/posts/conditional-logistic-regression-omics/index.html",
-      "/posts/impute-and-remove-technical-variation-metabolomics/index.html",
-      "/posts/left-censored-models-showcase/index.html"
+      "/blog/conditional-logistic-regression-omics/index.html",
+      "/blog/impute-and-remove-technical-variation-metabolomics/index.html",
+      "/blog/left-censored-models-showcase/index.html"
     ]
   }
 ]
