@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/blog/icc/index.html",
       "/blog/metabolite-ratios/index.html",
       "/blog/mr-chemical-agents/index.html",
       "/blog/interactive-within-subject-variability-tool/index.html",

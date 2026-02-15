@@ -1,0 +1,464 @@
+---
+title: "A guide to intraclass correlation coefficients (in environmental epidemiology)"
+date: "2026-02-15"
+format: 
+  html: 
+      echo: true
+      message: false
+      warning: false
+      code-fold: true
+      fig-height: 4
+execute: 
+  cache: true
+citation: true
+bibliography: references.bib
+---
+As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variation is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.
+
+Ideally, to quantify the amount of measurement error we compare our measurement to a 'true' measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the 'true' measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study. 
+
+If you can't know the truth, the next best thing is knowing if you can tell Person A apart from Person B.
+
+## If error is not random (i.e. systematic change in exposure)
+
+###  Difference Pearson correlation
+
+# Fisher's trick, observation about class also relates to Pearson
+
+::: {.column-page}
+```{ojs}
+d3 = require("d3")
+
+viewof simulation = {
+  // --- Constants for Styling ---
+  const colorOkabeBlue = "#0072B2"; 
+  const colorDotStroke = "white";
+  const colorGridLine = "#f1f3f5"; // Very subtle gray
+  const colorAxisText = "#6c757d";
+  const colorConnectLine = "#ced4da"; // Softer gray for dumbbells
+  const colorMeanLine = "#495057"; // Dark gray, not harsh black
+
+  // --- 1. Setup Container & Layout ---
+  const container = d3.create("div")
+    .style("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif")
+    .style("width", "100%")
+    .style("background-color", "#f8f9fa") // Keep the gray background hallmark
+    .style("border", "1px solid #dee2e6")
+    .style("border-radius", "8px")
+    .style("padding", "15px")
+    .style("box-sizing", "border-box");
+
+  // --- 2. CSS Styles ---
+  const style = container.append("style");
+  style.html(`
+    .control-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .slider-group {
+      flex: 1;
+      min-width: 220px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      font-weight: 600;
+      color: #343a40;
+      font-size: 13px;
+    }
+    .slider-val {
+      font-family: monospace;
+      color: ${colorOkabeBlue}; /* Use new blue here too */
+    }
+    .icc-box {
+      background: white;
+      padding: 5px 15px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+      text-align: center;
+      min-width: 100px;
+    }
+    .icc-label { font-size: 10px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
+    .icc-number { font-size: 20px; font-weight: 700; color: #343a40; line-height: 1.2; }
+    
+    .plots-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 768px) {
+      .plots-container { grid-template-columns: 1fr; }
+    }
+
+    .plot-card {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .axis-label {
+      font-weight: 600;
+      fill: ${colorAxisText};
+      font-size: 11px;
+    }
+  `);
+
+  // --- 3. DOM Elements Creation ---
+  const controlsDiv = container.append("div").attr("class", "control-panel");
+  
+  // Slider 1: Between Subject
+  const grp1 = controlsDiv.append("div").attr("class", "slider-group");
+  const head1 = grp1.append("div").attr("class", "slider-header");
+  head1.append("span").text("Between-subject variation (σ_b)");
+  const val1 = head1.append("span").attr("class", "slider-val").text("2.0");
+  const slider_b = grp1.append("input").attr("type", "range").attr("min", 0.1).attr("max", 5).attr("step", 0.1).attr("value", 3.0).style("width", "100%");
+
+  // Slider 2: Within Subject
+  const grp2 = controlsDiv.append("div").attr("class", "slider-group");
+  const head2 = grp2.append("div").attr("class", "slider-header");
+  head2.append("span").text("Within-subject variation (σ_w)");
+  const val2 = head2.append("span").attr("class", "slider-val").text("1.0");
+  const slider_w = grp2.append("input").attr("type", "range").attr("min", 0.1).attr("max", 5).attr("step", 0.1).attr("value", 1.0).style("width", "100%");
+
+  // ICC Display
+  const iccDiv = controlsDiv.append("div").attr("class", "icc-box");
+  iccDiv.append("div").attr("class", "icc-label").text("ICC (reliability)");
+  const iccNum = iccDiv.append("div").attr("class", "icc-number").text("0.90");
+
+  // Plots Section
+  const plotsDiv = container.append("div").attr("class", "plots-container");
+  const cardA = plotsDiv.append("div").attr("class", "plot-card");
+  const svgA = cardA.append("svg").attr("width", "100%").attr("height", 320);
+  const cardB = plotsDiv.append("div").attr("class", "plot-card");
+  const svgB = cardB.append("svg").attr("width", "100%").attr("height", 320);
+
+  // --- 4. Logic & Simulation ---
+  const nSubjects = 25;
+  const margin = {top: 10, right: 15, bottom: 35, left: 45};
+  
+  const rng = d3.randomNormal(0, 1);
+  const baseData = Array.from({length: nSubjects}, (_, i) => ({
+    id: i,
+    z_true: rng(),
+    z_err1: rng(),
+    z_err2: rng()
+  })).sort((a,b) => a.z_true - b.z_true); 
+
+  function update() {
+    const sb = +slider_b.property("value");
+    const sw = +slider_w.property("value");
+    
+    val1.text(sb.toFixed(1));
+    val2.text(sw.toFixed(1));
+    const icc = (sb**2) / (sb**2 + sw**2);
+    iccNum.text(icc.toFixed(2));
+
+    const data = baseData.map(d => {
+      const trueVal = d.z_true * sb;
+      return {
+        id: d.id,
+        trueVal: trueVal,
+        y1: trueVal + (d.z_err1 * sw),
+        y2: trueVal + (d.z_err2 * sw),
+        mean: (trueVal + (d.z_err1 * sw) + trueVal + (d.z_err2 * sw)) / 2
+      };
+    });
+
+    const maxVal = Math.max(
+      d3.max(data, d => Math.abs(d.y1)), 
+      d3.max(data, d => Math.abs(d.y2))
+    ) * 1.1;
+    
+    // --- Draw Plot A (Dumbbell) ---
+    const widthA = cardA.node().getBoundingClientRect().width || 400;
+    const heightA = 320;
+    svgA.attr("viewBox", `0 0 ${widthA} ${heightA}`);
+    svgA.selectAll("*").remove();
+
+    const xA = d3.scaleLinear()
+      .domain([-1, nSubjects])
+      .range([margin.left, widthA - margin.right]);
+      
+    const yA = d3.scaleLinear()
+      .domain([-maxVal, maxVal])
+      .range([heightA - margin.bottom, margin.top]);
+
+    // Gridlines A (Subtler)
+    svgA.append("g").attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(yA).ticks(5).tickSize(-widthA + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`)
+        .call(d3.axisBottom(xA).ticks(6).tickSize(-heightA + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+
+    // Axes A
+    svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5)).attr("color", colorAxisText);
+    svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(0)).attr("color", colorAxisText);
+
+    // Labels A
+    svgA.append("text").attr("transform", "rotate(-90)").attr("x", -heightA/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement value");
+    svgA.append("text").attr("x", widthA/2).attr("y", heightA - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Subjects (ranked by mean)");
+
+    // Data A (Refined aesthetics)
+    svgA.selectAll("line.connect").data(data).join("line")
+      .attr("x1", (d, i) => xA(i)).attr("x2", (d, i) => xA(i))
+      .attr("y1", d => yA(d.y1)).attr("y2", d => yA(d.y2))
+      .attr("stroke", colorConnectLine).attr("stroke-width", 0.8); // Thinner, softer gray
+
+    svgA.selectAll("line.mean").data(data).join("line")
+      .attr("x1", (d, i) => xA(i) - 4).attr("x2", (d, i) => xA(i) + 4) 
+      .attr("y1", d => yA(d.mean)).attr("y2", d => yA(d.mean))
+      .attr("stroke", colorMeanLine).attr("stroke-width", 1.5); // Thinner, not pure black
+
+    // Dots with white border for unification
+    svgA.selectAll("circle.p1").data(data).join("circle")
+      .attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1))
+      .attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+
+    svgA.selectAll("circle.p2").data(data).join("circle")
+      .attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2))
+      .attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+
+
+    // --- Draw Plot B (Scatter) ---
+    const widthB = cardB.node().getBoundingClientRect().width || 400;
+    const heightB = 320;
+    svgB.attr("viewBox", `0 0 ${widthB} ${heightB}`);
+    svgB.selectAll("*").remove();
+
+    const scaleB = d3.scaleLinear()
+        .domain([-maxVal, maxVal])
+        .range([margin.left, widthB - margin.right]);
+        
+    const scaleBy = d3.scaleLinear()
+        .domain([-maxVal, maxVal])
+        .range([heightB - margin.bottom, margin.top]);
+
+    // Gridlines B (Subtler)
+    svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`)
+        .call(d3.axisBottom(scaleB).ticks(5).tickSize(-heightB + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgB.append("g").attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(scaleBy).ticks(5).tickSize(-widthB + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+
+    // Axes B
+    svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`).call(d3.axisBottom(scaleB).ticks(5)).attr("color", colorAxisText);
+    svgB.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleBy).ticks(5)).attr("color", colorAxisText);
+
+    // Identity Line
+    svgB.append("line")
+      .attr("x1", scaleB(-maxVal)).attr("y1", scaleBy(-maxVal))
+      .attr("x2", scaleB(maxVal)).attr("y2", scaleBy(maxVal))
+      .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
+
+    // Labels B
+    svgB.append("text").attr("transform", "rotate(-90)").attr("x", -heightB/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 2");
+    svgB.append("text").attr("x", widthB/2).attr("y", heightB - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 1");
+
+    // Data B (Okabe blue + white stroke)
+    svgB.selectAll("circle.scatter").data(data).join("circle")
+      .attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2))
+      .attr("r", 4).attr("fill", colorOkabeBlue)
+      .attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+  }
+
+  // --- 5. Event Listeners ---
+  slider_b.on("input", update);
+  slider_w.on("input", update);
+  
+  const observer = new ResizeObserver(() => { update(); });
+  observer.observe(plotsDiv.node());
+
+  update();
+  return container.node();
+}
+```
+:::
+
+# Quantifying ICC through reliability studies
+Now let's look at some real data. This is untargeted liquid chromatography high-resolution mass spectrometry (LC-HRMS) data from the EXPOsOMICS study, which we made openly available. Blood samples were collected from most subjects on two separate occasions, approx. 100 days apart, and subsequently analyzed. Subjects were recruited from four centers: Utrecht, Turin, Basel, and Norwich.
+```{r}
+fetch_and_read <- function(url, reader_func, needs_file = FALSE, ...) {
+  curl::curl_fetch_memory(url) |>
+    (\(x) {
+      if (needs_file) {
+        tmp <- tempfile(fileext = tools::file_ext(url) |> paste0(".", x = _))
+        writeBin(x$content, tmp)
+        reader_func(tmp, ...)
+      } else {
+        reader_func(x$content, ...)
+      }
+    })()
+}
+
+annotations <- fetch_and_read("https://zenodo.org/record/8156759/files/annotations.xlsx?download=1", 
+                              readxl::read_xlsx, needs_file = TRUE) |> 
+  tidyr::unite(feature_string, c(mass, retention_time), sep = '_', remove = FALSE) |> 
+  dplyr::mutate(feature_string = paste("X", feature_string, sep = ""),
+                curated_name = tolower(curated_name)) 
+
+lc_data <- fetch_and_read("https://zenodo.org/record/8156759/files/processed_lcms_data.csv?download=1",
+                          readr::read_csv) |> 
+  dplyr::select(!tidyselect::starts_with("X"), tidyselect::all_of(annotations[['feature_string']])) |> 
+  dplyr::add_count(subjectid, name = "n_obs")
+
+perc_nondetects <- lc_data |> 
+  dplyr::summarise(across(tidyselect::starts_with("X"), ~ mean(.x == 1, na.rm = TRUE)*100)) |> 
+  tidyr::pivot_longer(tidyselect::everything(), names_to = 'feature_string', values_to = "perc_nondetects") |> 
+  dplyr::mutate(all_detects = perc_nondetects == 0)
+
+annotations <- annotations |> dplyr::full_join(perc_nondetects) |>
+  dplyr::mutate(curated_name = forcats::fct_recode(as.factor(curated_name), 
+                                                   "cholesterol" = "cholesterol - h2o"))
+
+```
+
+Using an ANOVA model you can partition the variance in a between and within person part. 
+
+```{r}
+cholesterol <- lc_data |> 
+  dplyr::select(
+    !tidyselect::starts_with("X"), , 
+    dplyr::all_of(with(
+      subset(annotations, curated_name == "cholesterol"), 
+      setNames(feature_string, curated_name)
+    ))
+  )
+
+m <- aov(log(cholesterol) ~ subjectid, 
+         data = cholesterol |> dplyr::filter(n_obs == 2))
+```
+
+```{r}
+get_icc_anova <- function(m) {
+  stats <- summary(m)[[1]]
+  
+  MS_between <- stats["subjectid", "Mean Sq"] 
+  MS_within  <- stats["Residuals", "Mean Sq"]
+  
+  var_within <- MS_within
+  var_between <- (MS_between - MS_within) / 2
+  
+  var_between / (var_between + var_within)
+}
+
+get_icc_anova(m)
+```
+Using a random effects model you can also fit such a model on unbalanced data where not everyone has multiple measurements.
+
+```{r}
+get_icc_lmer <- function(m) {
+  vc <- lme4::VarCorr(m)
+  var_between <- as.numeric(vc[[1]])
+  var_residual <- attr(vc, "sc")^2
+  var_between / (var_between + var_residual)
+}
+
+lme4::lmer(log(cholesterol) ~ 1 + (1|subjectid), data = cholesterol) |> 
+  get_icc_lmer()
+```
+Note that the ICC will be the same as the ANOVA model if you fit it on the same data
+
+```{r}
+lme4::lmer(log(cholesterol) ~ 1 + (1|subjectid), data = subset(cholesterol, n_obs == 2)) |> 
+  get_icc_lmer()
+```
+
+
+
+# Fisher
+Fisher showed that using these variance components you can calculate the correlation between observations within the same group by simply including every person in there twice,  .
+
+```{r}
+cholesterol |> 
+  dplyr::filter(n_obs == 2) |> 
+  tidyr::pivot_wider(
+    id_cols = subjectid, 
+    names_from = sample_code, 
+    values_from = cholesterol
+  ) |> 
+  # create the two "views" of the data: have every pair be included twice, in both orders
+  (\(d) dplyr::bind_rows(
+    d |> dplyr::select(x = A, y = B), 
+    d |> dplyr::select(x = B, y = A)
+  ))() |> 
+  # calculate correlation on the now-doubled dataset
+  dplyr::summarise(icc = cor(log(x), log(y))) |> 
+  dplyr::pull()
+
+```
+Besides taking the proportion of variance that is between-subject, we can also take the ratio of within- to between-subject variance. Gelman offers an interesting information theory perspective on this ratio. Namely, it quantifies the information content of the population distribution in terms of actual samples. Specifically, the value represents the number of observations you would need from a single subject (i.e., class) to match the information already provided by the population prior -- the global mean.[^1]
+
+For example, if within-subject variance is 2 times the between-subject variance (within-subject variance is 2, between-subject variance is 1, for an ICC of 0.33), there is technically more information about a subject's true mean in the global mean than in that subject's own data if a subject has fewer than 2 observations. In other words, if you had to guess a subject's true mean, you would do better to use the population mean than the single observation you had on that subject. Conversely, with an ICC of 0.2 you would need 4 observations on a subject to match the information from the global mean!
+
+[^1]: This calculation is derived from equating the precision (inverse variance) of the population prior with that of the sample mean. From an information theory perspective, the standard deviation quantifies uncertainty -- meaning a narrower distribution (higher precision) contains more information. By setting the standard deviation of the between-subject distribution ($\sigma_{\text{between}}$) equal to the standard error of the within-subject sample mean ($\sigma_{\text{within}}/\sqrt{n}$), we identify the point where the prior and the data provide equivalent information. Solving for $n$ yields the variance ratio $n = \sigma^2_{\text{within}} / \sigma^2_{\text{between}}$. This value represents the "equivalent sample size" of the prior. Practically, this defines the tipping point for partial pooling: below this threshold, the multilevel model shrinks estimates toward the global mean; above it, the specific subject's data dominates.
+
+# Attentuation of effects
+
+# Planning studies
+Burstyn post
+
+Lakind
+## Substudy
+
+## Physical pooling
+
+# Correcting for the measurement error
+Don't correct in prediction modeling
+
+## Divide by attenutation factor
+
+## Regression calibration
+
+## Simex
+
+## Correct variance
+
+Increases variance probably. Null hypothesis was still valid so this does not increase power.
+
+# Bonus
+## Crossed, nested, random slope, and left-censored models
+The random intercept models we usually use to calculate the ICC are super flexible, and allow you to easily add crossed effects (for example if you also have different raters or different batches (also a different rater in some way)), or  specify a three-level model when some of the variation between subjects is simply variation between different countries. 
+
+For biological data, we can also easily model the left-censoring mechanism for the nondetects using `brms` and `STAN` such that we do not need to impute and can directly obtain an estimate of the variances. In this Bayesian framework we can also get the uncertainty of the ICC estimate for free. 
+```{r}
+#| eval: false
+
+```
+
+
+Or add a random slope. Although it gets quite complicated then as the variance depends on at what value you evaluate the random slope. 
+
+
+## Bland-Altman plot
+ICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude unacceptable is clinically unacceptable). A Bland-Altman plot is a better device to test this.
+
+One of the most cited papers actually
+
+## Other fields
+
+### Biology
+Repeatability.
+
+### Psychometrics
+Weird shit. Rater agreement mostly?
+
+Test-retest
+
+Agreement
+
+Consistency, absolute
+
+Connection Spearman to Rank ICC?
+
+Reproducibility?
+
+
+BMI ICC of 0.9 as far as it's an absolute measurement. Height close to 1. 

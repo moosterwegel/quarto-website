@@ -207,7 +207,7 @@
     "href": "index.html",
     "title": "Max Oosterwegel -- blog",
     "section": "",
-    "text": "Year\n\n\nTitle\n\n\nMonth & Day\n\n\n\n\n\n\n2026\n\n\nReflections on metabolite ratios\n\n\nJanuary 26\n\n\n\n\n2025\n\n\nCan we use mendelian randomization to learn about the causal effects of chemical exposures on our health?\n\n\nOctober 31\n\n\n\n\n\n\nExploring within-person biomarker variability interactively\n\n\nAugust 13\n\n\n\n\n\n\nFitting models to bivariate left-censored data\n\n\nJuly 30\n\n\n\n\n\n\nNo, simply reducing the number of tests won’t increase your power when you control the FDR\n\n\nJuly 18\n\n\n\n\n\n\nThe advantages of conditional logistic regression in matched case-control studies of (metabol)omic data\n\n\nMay 5\n\n\n\n\n\n\nImputing nondetects and removing technical variation in left-censored metabolomic data\n\n\nApril 28\n\n\n\n\n\n\nA guide to fitting left-censored models with R\n\n\nApril 21\n\n\n\n\nNo matching items"
+    "text": "Year\n\n\nTitle\n\n\nMonth & Day\n\n\n\n\n\n\n2026\n\n\nA guide to intraclass correlation coefficients (in environmental epidemiology)\n\n\nFebruary 15\n\n\n\n\n\n\nReflections on metabolite ratios\n\n\nJanuary 26\n\n\n\n\n2025\n\n\nCan we use mendelian randomization to learn about the causal effects of chemical exposures on our health?\n\n\nOctober 31\n\n\n\n\n\n\nExploring within-person biomarker variability interactively\n\n\nAugust 13\n\n\n\n\n\n\nFitting models to bivariate left-censored data\n\n\nJuly 30\n\n\n\n\n\n\nNo, simply reducing the number of tests won’t increase your power when you control the FDR\n\n\nJuly 18\n\n\n\n\n\n\nThe advantages of conditional logistic regression in matched case-control studies of (metabol)omic data\n\n\nMay 5\n\n\n\n\n\n\nImputing nondetects and removing technical variation in left-censored metabolomic data\n\n\nApril 28\n\n\n\n\n\n\nA guide to fitting left-censored models with R\n\n\nApril 21\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "blog/metabolite-ratios/index.html",
@@ -278,5 +278,82 @@
     "title": "Reflections on metabolite ratios",
     "section": "Metabolite specific statistical challenges",
     "text": "Metabolite specific statistical challenges\n\nExplosion of tests\nIf our platform provides us with information on the intensity of 400 molecules and we want to study all the ratios this amounts to 79800 tests (\\(\\frac{n(n-1)}{2}\\)). That’s a lot! And while that is not necessarily a statistical problem3, I suspect that – based on the previous section – we can come up with general, promising classes of ratios to prioritize. For example, known substrate-product pairs from high confidence reactions, and all pairwise ratios within a pathway, or of a pro-inflammatory product to its precursor, are much more promising than the ratio of metabolites that are not known to be connected by an edge in a network. For xenobiotics, prioritising beyond oxidized/non-oxidized forms, becomes challenging as xenobiotics lack pathway structure. We could calculate all ratios to still allow for the study of ADME and toxicokinetic processes. Depending on the exact research question, we can perform a series of univariable tests and control for multiple testing (separately by each of these categories), or we can perform variable selection using a computationally efficient statistical procedure of lasso for ratios as proposed by Bates and Tibshirani (2019).\n\n\nChange in preprocessing\nI have written before how to preprocess the metabolomic data for epidemiological studies. This process involves removing technical variation such as batch effects and imputing observations below the limit of detection using an imputation model. For ratios, this process likely needs tweaking. Fortunately, Morris et al. (2014) showed that passive imputation, where we impute the log-transformed numerator and denominator as individual variables (allowing the imputation model to utilize the correlation between them) and only then derive the ratio of interest from these values, is a robust strategy. I think we can readily translate this to our metabolomic pipeline4, by doing the following:\n\nLog-transform our variables.\nFit a left-censored model with for example random intercepts, to model the technical variation.\nRemove the technical variation.\nFor both the numerator and denominator, generate multiple imputations below the-technical-variation-adjusted-limit-of-detection using a chained equation procedure with for example mice.\nFit the regression model of interest with the ratio term specified as I(log_numerator - log_denominator).\nPool our multiple estimates using Rubin’s rules.\n\nOnly step 4 – where we invoke mice – and step 5 are a slight tweak really. Since this pipeline is somewhat computationally intensive, prioritizing certain ratio categories matters not only for managing multiple testing but also for managing computational cost.\n\n\nMeasurement error propagation\nA final statistical challenge (specific to metabolites) involves (technical) measurement error propagation (e.g. Holmes and Buhr (2007)). While this is less of a concern for ratios based on robust measurements like body-mass-index, it is critical when dealing with measurements from biological assays. Untargeted high-throughput mass spectrometry, for example, can contain considerable technical variation. While we can capture systematic batch effects through regression models, subtle technical variation that operates beyond simple intercept shifts may be harder to systematically address.5\nThe extent of this challenge depends on whether the error is shared across the numerator and denominator. Theoretically, if the technical error is highly correlated, taking a ratio acts as a normalization step, effectively cancelling out the noise. However, if the errors are independent – and this is not entirely unlikely in metabolomics – they compound (pun intended) and the resulting ratio will contain more noise than the individual components. I think that this problem can become particularly severe when the denominator is small or near the limit of detection as dividing by an imprecisely measured small number causes the variance of the ratio to explode, potentially creating artificial outliers. Though the log-transformation often applied to metabolic data will probably mitigate the worst of this."
+  },
+  {
+    "objectID": "blog/icc/index.html",
+    "href": "blog/icc/index.html",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "",
+    "text": "As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variation is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.\nIdeally, to quantify the amount of measurement error we compare our measurement to a ‘true’ measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the ‘true’ measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study.\nIf you can’t know the truth, the next best thing is knowing if you can tell Person A apart from Person B."
+  },
+  {
+    "objectID": "blog/icc/index.html#if-error-is-not-random-i.e.-systematic-change-in-exposure",
+    "href": "blog/icc/index.html#if-error-is-not-random-i.e.-systematic-change-in-exposure",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "If error is not random (i.e. systematic change in exposure)",
+    "text": "If error is not random (i.e. systematic change in exposure)\n\nDifference Pearson correlation"
+  },
+  {
+    "objectID": "blog/icc/index.html#physical-pooling",
+    "href": "blog/icc/index.html#physical-pooling",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Physical pooling",
+    "text": "Physical pooling"
+  },
+  {
+    "objectID": "blog/icc/index.html#divide-by-attenutation-factor",
+    "href": "blog/icc/index.html#divide-by-attenutation-factor",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Divide by attenutation factor",
+    "text": "Divide by attenutation factor"
+  },
+  {
+    "objectID": "blog/icc/index.html#regression-calibration",
+    "href": "blog/icc/index.html#regression-calibration",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Regression calibration",
+    "text": "Regression calibration"
+  },
+  {
+    "objectID": "blog/icc/index.html#simex",
+    "href": "blog/icc/index.html#simex",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Simex",
+    "text": "Simex"
+  },
+  {
+    "objectID": "blog/icc/index.html#correct-variance",
+    "href": "blog/icc/index.html#correct-variance",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Correct variance",
+    "text": "Correct variance\nIncreases variance probably. Null hypothesis was still valid so this does not increase power."
+  },
+  {
+    "objectID": "blog/icc/index.html#crossed-nested-random-slope-and-left-censored-models",
+    "href": "blog/icc/index.html#crossed-nested-random-slope-and-left-censored-models",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Crossed, nested, random slope, and left-censored models",
+    "text": "Crossed, nested, random slope, and left-censored models"
+  },
+  {
+    "objectID": "blog/icc/index.html#bland-altman-plot",
+    "href": "blog/icc/index.html#bland-altman-plot",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Bland-Altman plot",
+    "text": "Bland-Altman plot\nICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude unacceptable is clinically unacceptable). A Bland-Altman plot is a better device to test this.\nOne of the most cited papers actually"
+  },
+  {
+    "objectID": "blog/icc/index.html#other-fields",
+    "href": "blog/icc/index.html#other-fields",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Other fields",
+    "text": "Other fields\n\nBiology\nRepeatability.\n\n\nPsychometrics\nWeird shit. Rater agreement mostly?\nTest-retest\nAgreement\nConsistency, absolute\nConnection Spearman to Rank ICC?\nReproducibility?\nBMI ICC of 0.9 as far as it’s an absolute measurement. Height close to 1."
+  },
+  {
+    "objectID": "blog/icc/index.html#footnotes",
+    "href": "blog/icc/index.html#footnotes",
+    "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
+    "section": "Footnotes",
+    "text": "Footnotes\n\n\nThis calculation is derived from equating the precision (inverse variance) of the population prior with that of the sample mean. From an information theory perspective, the standard deviation quantifies uncertainty – meaning a narrower distribution (higher precision) contains more information. By setting the standard deviation of the between-subject distribution (\\(\\sigma_{\\text{between}}\\)) equal to the standard error of the within-subject sample mean (\\(\\sigma_{\\text{within}}/\\sqrt{n}\\)), we identify the point where the prior and the data provide equivalent information. Solving for \\(n\\) yields the variance ratio \\(n = \\sigma^2_{\\text{within}} / \\sigma^2_{\\text{between}}\\). This value represents the “equivalent sample size” of the prior. Practically, this defines the tipping point for partial pooling: below this threshold, the multilevel model shrinks estimates toward the global mean; above it, the specific subject’s data dominates.↩︎"
   }
 ]
