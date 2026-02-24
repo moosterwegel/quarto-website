@@ -333,7 +333,7 @@
     "href": "blog/icc/index.html#crossed-nested-random-slope-and-left-censored-models",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Crossed, nested, random slope, and left-censored models",
-    "text": "Crossed, nested, random slope, and left-censored models"
+    "text": "Crossed, nested, random slope, and left-censored models\nThe random intercept models we usually use to calculate the ICC are super flexible, and allow you to easily add crossed effects (for example if you also have different raters or different batches (also a different rater in some way)), or specify a three-level model when some of the variation between subjects is simply variation between different countries.\nFor biological data, we can also easily model the left-censoring mechanism for the nondetects using brms and STAN such that we do not need to impute and can directly obtain an estimate of the variances. In this Bayesian framework we can also get the uncertainty of the ICC estimate for free.\nOr add a random slope. Although it gets quite complicated then as the variance depends on at what value you evaluate the random slope."
   },
   {
     "objectID": "blog/icc/index.html#bland-altman-plot",
