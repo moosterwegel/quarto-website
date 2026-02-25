@@ -71,22 +71,6 @@ viewof simulation = {
       .control-panel { flex-direction: column; align-items: stretch; }
       .sliders-grid { grid-template-columns: 1fr; }
     }
-    .slider-group {
-      display: flex;
-      flex-direction: column;
-    }
-    .slider-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-weight: 600;
-      color: #343a40;
-      font-size: 13px;
-    }
-    .slider-val {
-      font-family: monospace;
-      color: ${colorOkabeBlue};
-    }
     .metrics-col {
       display: flex;
       flex-direction: column;
@@ -140,39 +124,47 @@ viewof simulation = {
   const controlsDiv = container.append("div").attr("class", "control-panel");
   const slidersGrid = controlsDiv.append("div").attr("class", "sliders-grid");
   
-  // Slider 1: Between Subject
-  const grp1 = slidersGrid.append("div").attr("class", "slider-group");
-  const head1 = grp1.append("div").attr("class", "slider-header");
-  head1.append("span").text("Between-subj var (σ_b)");
-  const val1 = head1.append("span").attr("class", "slider-val").text("2.0");
-  const slider_b = grp1.append("input").attr("type", "range").attr("min", 0.1).attr("max", 5).attr("step", 0.1).attr("value", 3.0).style("width", "100%");
+  // Helper function for building the standardized sliders
+  function createSlider(config) {
+    const sliderContainer = d3.create("div").style("display", "flex").style("flex-direction", "column").style("gap", "4px");
+    
+    const labelRow = sliderContainer.append("div").style("display", "flex").style("justify-content", "space-between").style("align-items", "center");
+    labelRow.append("label").style("font-weight", "600").style("font-size", "13px").style("color", "#495057").text(config.label);
+    const valueDisplay = labelRow.append("div").style("font-size", "12px").style("color", "#6c757d").style("font-weight", "500");
+    
+    const slider = sliderContainer.append("input")
+      .attr("type", "range")
+      .attr("min", config.min)
+      .attr("max", config.max)
+      .attr("step", config.step)
+      .property("value", config.value)
+      .style("width", "100%");
+      
+    const rangeDisplay = sliderContainer.append("div").style("display", "flex").style("justify-content", "space-between").style("font-size", "11px").style("color", "#6c757d");
+    rangeDisplay.append("span").text(config.min.toFixed(1));
+    rangeDisplay.append("span").text(config.max.toFixed(1));
+    
+    return { container: sliderContainer, slider, valueDisplay };
+  }
 
-  // Slider 2: Within Subject
-  const grp2 = slidersGrid.append("div").attr("class", "slider-group");
-  const head2 = grp2.append("div").attr("class", "slider-header");
-  head2.append("span").text("Within-subj var (σ_w)");
-  const val2 = head2.append("span").attr("class", "slider-val").text("1.0");
-  const slider_w = grp2.append("input").attr("type", "range").attr("min", 0.1).attr("max", 5).attr("step", 0.1).attr("value", 1.0).style("width", "100%");
+  // Create Sliders
+  const sliders = {
+    b: createSlider({ label: "Between-subject variance (σ_b)", min: 0.1, max: 5.0, step: 0.1, value: 3.0 }),
+    w: createSlider({ label: "Within-subject variance (σ_w)", min: 0.1, max: 5.0, step: 0.1, value: 1.0 }),
+    m1: createSlider({ label: "Mean measurement 1 (μ₁)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 }),
+    m2: createSlider({ label: "Mean measurement 2 (μ₂)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 })
+  };
 
-  // Slider 3: Mean 1
-  const grp3 = slidersGrid.append("div").attr("class", "slider-group");
-  const head3 = grp3.append("div").attr("class", "slider-header");
-  head3.append("span").text("Mean measurement 1 (μ₁)");
-  const val3 = head3.append("span").attr("class", "slider-val").text("0.0");
-  const slider_m1 = grp3.append("input").attr("type", "range").attr("min", -5).attr("max", 5).attr("step", 0.5).attr("value", 0.0).style("width", "100%");
-
-  // Slider 4: Mean 2
-  const grp4 = slidersGrid.append("div").attr("class", "slider-group");
-  const head4 = grp4.append("div").attr("class", "slider-header");
-  head4.append("span").text("Mean measurement 2 (μ₂)");
-  const val4 = head4.append("span").attr("class", "slider-val").text("0.0");
-  const slider_m2 = grp4.append("input").attr("type", "range").attr("min", -5).attr("max", 5).attr("step", 0.5).attr("value", 0.0).style("width", "100%");
+  slidersGrid.append(() => sliders.b.container.node());
+  slidersGrid.append(() => sliders.w.container.node());
+  slidersGrid.append(() => sliders.m1.container.node());
+  slidersGrid.append(() => sliders.m2.container.node());
 
   // Metrics Display Column
   const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
   
   const iccDiv = metricsCol.append("div").attr("class", "metric-box");
-  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  iccDiv.append("div").attr("class", "metric-label").text("ICC");
   const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
 
   const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
@@ -210,15 +202,16 @@ viewof simulation = {
   })).sort((a,b) => a.z_true - b.z_true); 
 
   function update() {
-    const sb = +slider_b.property("value");
-    const sw = +slider_w.property("value");
-    const m1 = +slider_m1.property("value");
-    const m2 = +slider_m2.property("value");
+    const sb = +sliders.b.slider.property("value");
+    const sw = +sliders.w.slider.property("value");
+    const m1 = +sliders.m1.slider.property("value");
+    const m2 = +sliders.m2.slider.property("value");
     
-    val1.text(sb.toFixed(1));
-    val2.text(sw.toFixed(1));
-    val3.text(m1.toFixed(1));
-    val4.text(m2.toFixed(1));
+    // Update Slider Displays
+    sliders.b.valueDisplay.text(sb.toFixed(1));
+    sliders.w.valueDisplay.text(sw.toFixed(1));
+    sliders.m1.valueDisplay.text(m1.toFixed(1));
+    sliders.m2.valueDisplay.text(m2.toFixed(1));
 
     const trueBeta = 0.5; // Set the standard true effect size
 
@@ -474,10 +467,7 @@ viewof simulation = {
   }
 
   // --- 5. Event Listeners ---
-  slider_b.on("input", update);
-  slider_w.on("input", update);
-  slider_m1.on("input", update);
-  slider_m2.on("input", update);
+  Object.values(sliders).forEach(s => s.slider.on("input", update));
   
   const observer = new ResizeObserver(() => { update(); });
   observer.observe(plotsDiv.node());
