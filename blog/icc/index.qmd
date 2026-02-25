@@ -30,6 +30,9 @@ d3 = require("d3")
 viewof simulation = {
   // --- Constants for Styling ---
   const colorOkabeBlue = "#0072B2"; 
+  const colorOkabeVermillion = "#D55E00";
+  const colorOkabeGreen = "#009E73";
+  const colorLightBlue = "#78b7c5";
   const colorDotStroke = "white";
   const colorGridLine = "#f1f3f5"; 
   const colorAxisText = "#6c757d";
@@ -38,7 +41,7 @@ viewof simulation = {
 
   // --- 1. Setup Container & Layout ---
   const container = d3.create("div")
-    .style("font-family", "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif")
+    .style("font-family", "Inter, sans-serif")
     .style("width", "100%")
     .style("background-color", "#f8f9fa") 
     .style("border", "1px solid #dee2e6")
@@ -92,14 +95,14 @@ viewof simulation = {
     }
     .metric-box {
       background: white;
-      padding: 10px 15px;
+      padding: 6px 10px;
       border-radius: 6px;
       border: 1px solid #dee2e6;
       text-align: center;
-      min-width: 120px;
+      min-width: 110px;
     }
     .metric-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
-    .metric-number { font-size: 24px; font-weight: 700; color: #343a40; line-height: 1.2; }
+    .metric-number { font-size: 20px; font-weight: 700; color: #343a40; line-height: 1.2; }
     
     .plots-container {
       display: grid;
@@ -118,6 +121,7 @@ viewof simulation = {
       display: flex;
       flex-direction: column;
       align-items: center;
+      position: relative;
     }
     .axis-label {
       font-weight: 600;
@@ -162,7 +166,7 @@ viewof simulation = {
   const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
   
   const iccDiv = metricsCol.append("div").attr("class", "metric-box");
-  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  iccDiv.append("div").attr("class", "metric-label").text("ICC");
   const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
 
   const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
@@ -171,14 +175,24 @@ viewof simulation = {
 
   // Plots Section
   const plotsDiv = container.append("div").attr("class", "plots-container");
+  
+  // Row 1: Plots A and B
   const cardA = plotsDiv.append("div").attr("class", "plot-card");
   const svgA = cardA.append("svg").attr("width", "100%").attr("height", 320);
+  
   const cardB = plotsDiv.append("div").attr("class", "plot-card");
   const svgB = cardB.append("svg").attr("width", "100%").attr("height", 320);
 
+  // Row 2: Plots C and D
+  const cardC = plotsDiv.append("div").attr("class", "plot-card");
+  const svgC = cardC.append("svg").attr("width", "100%").attr("height", 320);
+  
+  const cardD = plotsDiv.append("div").attr("class", "plot-card");
+  const svgD = cardD.append("svg").attr("width", "100%").attr("height", 320);
+
   // --- 4. Logic & Simulation ---
   const nSubjects = 25;
-  const margin = {top: 10, right: 15, bottom: 35, left: 45};
+  const margin = {top: 15, right: 15, bottom: 35, left: 45};
   
   const rng = d3.randomNormal(0, 1);
   const baseData = Array.from({length: nSubjects}, (_, i) => ({
@@ -261,13 +275,8 @@ viewof simulation = {
     svgA.attr("viewBox", `0 0 ${widthA} ${heightA}`);
     svgA.selectAll("*").remove();
 
-    const xA = d3.scaleLinear()
-      .domain([-1, nSubjects])
-      .range([margin.left, widthA - margin.right]);
-      
-    const yA = d3.scaleLinear()
-      .domain([-maxVal, maxVal])
-      .range([heightA - margin.bottom, margin.top]);
+    const xA = d3.scaleLinear().domain([-1, nSubjects]).range([margin.left, widthA - margin.right]);
+    const yA = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightA - margin.bottom, margin.top]);
 
     svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5).tickSize(-widthA + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
     svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(6).tickSize(-heightA + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
@@ -276,11 +285,12 @@ viewof simulation = {
 
     svgA.append("text").attr("transform", "rotate(-90)").attr("x", -heightA/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement value");
     svgA.append("text").attr("x", widthA/2).attr("y", heightA - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Subjects (ranked by mean)");
+    svgA.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("A");
 
     svgA.selectAll("line.connect").data(data).join("line").attr("x1", (d, i) => xA(i)).attr("x2", (d, i) => xA(i)).attr("y1", d => yA(d.y1)).attr("y2", d => yA(d.y2)).attr("stroke", colorConnectLine).attr("stroke-width", 0.8); 
     svgA.selectAll("line.mean").data(data).join("line").attr("x1", (d, i) => xA(i) - 4).attr("x2", (d, i) => xA(i) + 4).attr("y1", d => yA(d.mean)).attr("y2", d => yA(d.mean)).attr("stroke", colorMeanLine).attr("stroke-width", 1.5); 
-    svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
-    svgA.selectAll("circle.p2").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2)).attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+    svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1);
+    svgA.selectAll("circle.p2").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1);
 
     // --- Draw Plot B (Scatter) ---
     const widthB = cardB.node().getBoundingClientRect().width || 400;
@@ -313,8 +323,130 @@ viewof simulation = {
 
     svgB.append("text").attr("transform", "rotate(-90)").attr("x", -heightB/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 2");
     svgB.append("text").attr("x", widthB/2).attr("y", heightB - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 1");
+    svgB.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("B");
 
-    svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+    svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+
+    // Dynamic Legend for Plot B
+    const legendB = svgB.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
+    
+    legendB.append("rect")
+      .attr("x", -5).attr("y", -5).attr("width", 115).attr("height", 44)
+      .attr("fill", "rgba(255, 255, 255, 0.9)").attr("stroke", "#dee2e6").attr("rx", 4);
+      
+    // Identity Line Legend Group
+    legendB.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", "#dc3545").attr("stroke-width", 1).attr("stroke-dasharray", "4");
+    legendB.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text("Identity (y=x)");
+    
+    // Linear Fit Legend Group
+    legendB.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorMeanLine).attr("stroke-width", 2);
+    legendB.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text("Linear Fit");
+
+    // --- Draw Plot C (Flattened Slope) ---
+    const widthC = cardC.node().getBoundingClientRect().width || 400;
+    const heightC = 320;
+    svgC.attr("viewBox", `0 0 ${widthC} ${heightC}`);
+    svgC.selectAll("*").remove();
+
+    const scaleCx = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.left, widthC - margin.right]);
+    const scaleCy = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightC - margin.bottom, margin.top]);
+
+    svgC.append("g").attr("transform", `translate(0,${heightC - margin.bottom})`).call(d3.axisBottom(scaleCx).ticks(5).tickSize(-heightC + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgC.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleCy).ticks(5).tickSize(-widthC + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgC.append("g").attr("transform", `translate(0,${heightC - margin.bottom})`).call(d3.axisBottom(scaleCx).ticks(5)).attr("color", colorAxisText);
+    
+    // Unitless Y-axis: Keep ticks but hide text
+    svgC.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleCy).ticks(5).tickFormat("")).attr("color", colorAxisText);
+
+    // Theoretical True Relationship (Beta = 1) passing through the mean
+    // Styled distinctively as a Solid Green Line
+    svgC.append("line")
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanY1 + 1 * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanY1 + 1 * (maxVal - meanY1)))
+      .attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
+
+    // Flattened Observed Relationship (Beta = ICC, for k=1) passing through the mean
+    // Styled distinctively as a Dashed Orange Line
+    svgC.append("line")
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanY1 + icc * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanY1 + icc * (maxVal - meanY1)))
+      .attr("stroke", colorOkabeVermillion).attr("stroke-dasharray", "6,4").attr("stroke-width", 2.5);
+
+    svgC.append("text").attr("transform", "rotate(-90)").attr("x", -heightC/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Outcome (Unitless)");
+    svgC.append("text").attr("x", widthC/2).attr("y", heightC - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Observed Exposure 1 (k = 1)");
+    svgC.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("C");
+
+    // Dynamic Legend for Plot C
+    const legendC = svgC.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
+    
+    legendC.append("rect")
+      .attr("x", -5).attr("y", -5).attr("width", 175).attr("height", 44)
+      .attr("fill", "rgba(255, 255, 255, 0.9)").attr("stroke", "#dee2e6").attr("rx", 4);
+      
+    // True Beta Legend Group
+    legendC.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
+    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True Effect (\u03B2 = 1.00)`);
+    
+    // Observed Beta Legend Group
+    legendC.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorOkabeVermillion).attr("stroke-width", 2.5).attr("stroke-dasharray", "6,4");
+    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Observed Effect (\u03B2 = ${icc.toFixed(2)})`);
+
+    // --- Draw Plot D (Spearman-Brown) ---
+    const widthD = cardD.node().getBoundingClientRect().width || 400;
+    const heightD = 320;
+    svgD.attr("viewBox", `0 0 ${widthD} ${heightD}`);
+    svgD.selectAll("*").remove();
+
+    const scaleDx = d3.scaleLinear().domain([1, 10]).range([margin.left, widthD - margin.right]);
+    const scaleDy = d3.scaleLinear().domain([0, 1.1]).range([heightD - margin.bottom, margin.top]);
+
+    svgD.append("g").attr("transform", `translate(0,${heightD - margin.bottom})`).call(d3.axisBottom(scaleDx).ticks(10).tickSize(-heightD + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgD.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleDy).ticks(5).tickSize(-widthD + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgD.append("g").attr("transform", `translate(0,${heightD - margin.bottom})`).call(d3.axisBottom(scaleDx).ticks(10).tickFormat(d3.format("d"))).attr("color", colorAxisText);
+    svgD.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleDy).ticks(5)).attr("color", colorAxisText);
+
+    // Generate Spearman-Brown data mapped from current variance ratio
+    // Use Math.max to prevent division by zero or negative lambda issues
+    const lambda = varWithin / Math.max(0.000001, varBetween); 
+    const kData = d3.range(1, 11).map(k => ({ k: k, att: 1 / (1 + lambda / k) }));
+
+    const lineGen = d3.line()
+      .x(d => scaleDx(d.k))
+      .y(d => scaleDy(d.att));
+
+    // Draw Attenuation Curve
+    svgD.append("path")
+      .datum(kData)
+      .attr("fill", "none")
+      .attr("stroke", colorOkabeBlue)
+      .attr("stroke-width", 2)
+      .attr("d", lineGen);
+      
+    // Draw dots for each K measure, highlighting K=1
+    svgD.selectAll("circle.k-pt").data(kData).join("circle")
+      .attr("cx", d => scaleDx(d.k)).attr("cy", d => scaleDy(d.att))
+      .attr("r", d => d.k === 1 ? 6 : 4) // Slightly larger radius for k=1
+      .attr("fill", d => d.k === 1 ? colorOkabeVermillion : colorLightBlue) // Match Vermillion color of Observed Beta
+      .attr("stroke", colorDotStroke).attr("stroke-width", 1);
+
+    // Perfect recovery line reference at 1.0
+    svgD.append("line")
+      .attr("x1", scaleDx(1)).attr("y1", scaleDy(1))
+      .attr("x2", scaleDx(10)).attr("y2", scaleDy(1))
+      .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
+
+    svgD.append("text").attr("transform", "rotate(-90)").attr("x", -heightD/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Attenuation Factor");
+    svgD.append("text").attr("x", widthD/2).attr("y", heightD - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurements Averaged (k)");
+    svgD.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("D");
+
+    // Label for the highlighted k=1 dot
+    svgD.append("text")
+      .attr("x", scaleDx(1) + 12)
+      .attr("y", scaleDy(kData[0].att) + 4)
+      .attr("font-size", "11px")
+      .attr("font-weight", "bold")
+      .attr("fill", colorOkabeVermillion)
+      .text("k = 1");
   }
 
   // --- 5. Event Listeners ---
@@ -331,6 +463,8 @@ viewof simulation = {
 }
 ```
 :::
+
+
 
 # Quantifying ICC through reliability studies
 Now let's look at some real data. This is untargeted liquid chromatography high-resolution mass spectrometry (LC-HRMS) data from the EXPOsOMICS study, which we made openly available. Blood samples were collected from most subjects on two separate occasions, approx. 100 days apart, and subsequently analyzed. Subjects were recruited from four centers: Utrecht, Turin, Basel, and Norwich.
@@ -459,7 +593,9 @@ Besides taking the proportion of variance that is between subjects, we can also 
 
 For example, if within-subject variance is two times the between-subject variance (within-subject variance is 2, between-subject variance is 1, for an ICC of 0.33), there is technically more information about a subject's true mean in the global mean than in that subject's own data if a subject has fewer than 2 observations. In other words, if you had to guess a subject's true mean, you would do better to use the population mean than the single observation you had on that subject. Conversely, with an ICC of 0.2 you would need 4 observations on a subject to match the information from the global mean!
 
-Interestingly, some earlier writings on exposure variability in environmental and occupational epidemiology calculated this ratio instead of the ICC. Looking more into it, it seems that this is the standard in biostatistics. 
+Interestingly, some earlier writings on exposure variability in environmental and occupational epidemiology calculated this ratio instead of the ICC. Looking more into it, it seems that this is more standard in biostatistics. 
+
+So, when $n=1$, the attenuation factor is exactly the ICC: $\beta^* = \beta \times \text{ICC}$. The ICC gives you the reliability of a single measurement.
 
 $$\frac{\sigma_b^2}{\sigma_w^2 + \sigma_b^2} = \frac{1}{1 + \frac{\sigma_w^2}{\sigma_b^2}}$$
 
@@ -470,7 +606,7 @@ $$\frac{\sigma_b^2}{\sigma_w^2 + \sigma_b^2} = \frac{1}{1 + \frac{\sigma_w^2}{\s
 Spearman-Brown
 
 # Planning studies
-Burstyn post
+Burstyn / SciPinion post
 
 Lakind
 
