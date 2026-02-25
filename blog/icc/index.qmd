@@ -21,13 +21,10 @@ If you can't know the truth, the next best thing is knowing if you can tell Pers
 
 ## If error is not random (i.e. systematic change in exposure)
 
-###  Difference Pearson correlation
-
 # Fisher's trick, observation about class also relates to Pearson
 
 ::: {.column-page}
 ```{ojs}
-//| code-fold: true
 d3 = require("d3")
 
 viewof simulation = {
@@ -87,17 +84,22 @@ viewof simulation = {
       font-family: monospace;
       color: ${colorOkabeBlue};
     }
-    .icc-box {
+    .metrics-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .metric-box {
       background: white;
       padding: 10px 15px;
       border-radius: 6px;
       border: 1px solid #dee2e6;
       text-align: center;
       min-width: 120px;
-      flex-shrink: 0;
     }
-    .icc-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
-    .icc-number { font-size: 24px; font-weight: 700; color: #343a40; line-height: 1.2; }
+    .metric-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
+    .metric-number { font-size: 24px; font-weight: 700; color: #343a40; line-height: 1.2; }
     
     .plots-container {
       display: grid;
@@ -156,10 +158,16 @@ viewof simulation = {
   const val4 = head4.append("span").attr("class", "slider-val").text("0.0");
   const slider_m2 = grp4.append("input").attr("type", "range").attr("min", -5).attr("max", 5).attr("step", 0.5).attr("value", 0.0).style("width", "100%");
 
-  // ICC Display
-  const iccDiv = controlsDiv.append("div").attr("class", "icc-box");
-  iccDiv.append("div").attr("class", "icc-label").text("ICC (Absolute)");
-  const iccNum = iccDiv.append("div").attr("class", "icc-number").text("0.90");
+  // Metrics Display Column
+  const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
+  
+  const iccDiv = metricsCol.append("div").attr("class", "metric-box");
+  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
+
+  const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
+  pearsonDiv.append("div").attr("class", "metric-label").text("Pearson r");
+  const pearsonNum = pearsonDiv.append("div").attr("class", "metric-number").text("0.90");
 
   // Plots Section
   const plotsDiv = container.append("div").attr("class", "plots-container");
@@ -204,41 +212,45 @@ viewof simulation = {
       };
     });
 
-// --- Calculate icc (ICC 1,1 - One-Way Random Effects, Absolute Agreement) ---
+    // --- Calculate ICC ---
     const n = data.length;
-    const k = 2; // two measurements per subject
+    const k = 2;
     const meanY1 = d3.mean(data, d => d.y1);
     const meanY2 = d3.mean(data, d => d.y2);
     const grandMean = (meanY1 + meanY2) / 2;
 
-    // Sum of Squares
-    // SSR (Between-Subjects): Variance of subject means around the grand mean
     const ssR = k * d3.sum(data, d => Math.pow(d.mean - grandMean, 2));
-    
-    // SSE (Within-Subjects): Variance of individual measurements around their subject's mean.
-    // *Crucially*, if m1 and m2 are different, it forces y1 and y2 further from their own mean, 
-    // inflating this error term and penalizing the ICC.
     const ssE = d3.sum(data, d => Math.pow(d.y1 - d.mean, 2) + Math.pow(d.y2 - d.mean, 2));
     
-    const ssTotal = ssR + ssE; 
-    const ssC = 0; // Intentionally ignored in 1-way ANOVA to enforce absolute agreement
-
-    // Mean Squares (k = 2 measurements)
     const msR = ssR / (n - 1);
     const msE = ssE / (n * (k - 1)); 
-    const msC = 0; 
 
-    // Extract Variances using Expected Mean Squares algebra
     const varWithin = msE;
     const varBetween = (msR - msE) / k;
 
-    // ICC Formula
     let icc = varBetween / (varBetween + varWithin);
-    
-    // Prevent floating point anomalies from showing negative numbers 
-    // (though theoretically possible, it's confusing for a basic demo)
     icc = Math.max(0, icc); 
     iccNum.text(icc.toFixed(2));
+
+    // --- Calculate Pearson r and Linear Trend ---
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+    data.forEach(d => {
+      sumX += d.y1;
+      sumY += d.y2;
+      sumXY += d.y1 * d.y2;
+      sumX2 += d.y1 * d.y1;
+      sumY2 += d.y2 * d.y2;
+    });
+    
+    const denX = (n * sumX2) - (sumX * sumX);
+    const denY = (n * sumY2) - (sumY * sumY);
+    const num = (n * sumXY) - (sumX * sumY);
+    
+    const pearson = (denX <= 0 || denY <= 0) ? 0 : num / Math.sqrt(denX * denY);
+    pearsonNum.text(pearson.toFixed(2));
+    
+    const slope = denX <= 0 ? 0 : num / denX;
+    const intercept = (sumY - slope * sumX) / n;
 
     // --- Dynamic Axis Scaling ---
     const maxVal = d3.max(data, d => Math.max(Math.abs(d.y1), Math.abs(d.y2))) * 1.1;
@@ -257,17 +269,14 @@ viewof simulation = {
       .domain([-maxVal, maxVal])
       .range([heightA - margin.bottom, margin.top]);
 
-    // Gridlines & Axes A
     svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5).tickSize(-widthA + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
     svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(6).tickSize(-heightA + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
     svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5)).attr("color", colorAxisText);
     svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(0)).attr("color", colorAxisText);
 
-    // Labels A
     svgA.append("text").attr("transform", "rotate(-90)").attr("x", -heightA/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement value");
     svgA.append("text").attr("x", widthA/2).attr("y", heightA - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Subjects (ranked by mean)");
 
-    // Data A
     svgA.selectAll("line.connect").data(data).join("line").attr("x1", (d, i) => xA(i)).attr("x2", (d, i) => xA(i)).attr("y1", d => yA(d.y1)).attr("y2", d => yA(d.y2)).attr("stroke", colorConnectLine).attr("stroke-width", 0.8); 
     svgA.selectAll("line.mean").data(data).join("line").attr("x1", (d, i) => xA(i) - 4).attr("x2", (d, i) => xA(i) + 4).attr("y1", d => yA(d.mean)).attr("y2", d => yA(d.mean)).attr("stroke", colorMeanLine).attr("stroke-width", 1.5); 
     svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
@@ -282,20 +291,29 @@ viewof simulation = {
     const scaleB = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.left, widthB - margin.right]);
     const scaleBy = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightB - margin.bottom, margin.top]);
 
-    // Gridlines & Axes B
     svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`).call(d3.axisBottom(scaleB).ticks(5).tickSize(-heightB + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
     svgB.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleBy).ticks(5).tickSize(-widthB + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
     svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`).call(d3.axisBottom(scaleB).ticks(5)).attr("color", colorAxisText);
     svgB.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleBy).ticks(5)).attr("color", colorAxisText);
 
-    // Identity Line
-    svgB.append("line").attr("x1", scaleB(-maxVal)).attr("y1", scaleBy(-maxVal)).attr("x2", scaleB(maxVal)).attr("y2", scaleBy(maxVal)).attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
+    // Identity Line (y=x)
+    svgB.append("line")
+      .attr("x1", scaleB(-maxVal)).attr("y1", scaleBy(-maxVal))
+      .attr("x2", scaleB(maxVal)).attr("y2", scaleBy(maxVal))
+      .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
 
-    // Labels B
+    // Trend Line (Linear Regression based on Pearson)
+    svgB.append("line")
+      .attr("x1", scaleB(-maxVal))
+      .attr("y1", scaleBy(slope * -maxVal + intercept))
+      .attr("x2", scaleB(maxVal))
+      .attr("y2", scaleBy(slope * maxVal + intercept))
+      .attr("stroke", colorMeanLine)
+      .attr("stroke-width", 2);
+
     svgB.append("text").attr("transform", "rotate(-90)").attr("x", -heightB/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 2");
     svgB.append("text").attr("x", widthB/2).attr("y", heightB - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 1");
 
-    // Data B
     svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorOkabeBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
   }
 
