@@ -124,8 +124,14 @@ viewof simulation = {
       position: relative;
     }
     .axis-label {
-      font-weight: 600;
+      font-weight: bold;
       fill: ${colorAxisText};
+      font-size: 12px;
+    }
+    
+    /* Override D3's native injected axis font */
+    .tick text {
+      font-family: "Inter", sans-serif;
       font-size: 11px;
     }
   `);
@@ -166,7 +172,7 @@ viewof simulation = {
   const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
   
   const iccDiv = metricsCol.append("div").attr("class", "metric-box");
-  iccDiv.append("div").attr("class", "metric-label").text("ICC");
+  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
   const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
 
   const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
@@ -199,7 +205,8 @@ viewof simulation = {
     id: i,
     z_true: rng(),
     z_err1: rng(),
-    z_err2: rng()
+    z_err2: rng(),
+    z_err_out: rng()
   })).sort((a,b) => a.z_true - b.z_true); 
 
   function update() {
@@ -213,16 +220,20 @@ viewof simulation = {
     val3.text(m1.toFixed(1));
     val4.text(m2.toFixed(1));
 
+    const trueBeta = 0.5; // Set the standard true effect size
+
     const data = baseData.map(d => {
       const trueVal = d.z_true * sb;
       const y1_val = trueVal + (d.z_err1 * sw) + m1;
       const y2_val = trueVal + (d.z_err2 * sw) + m2;
+      const outcome_val = (trueVal * trueBeta) + m1 + (d.z_err_out * 1.0); // Generate unitless outcome with true Beta
       return {
         id: d.id,
         trueVal: trueVal,
         y1: y1_val,
         y2: y2_val,
-        mean: (y1_val + y2_val) / 2
+        mean: (y1_val + y2_val) / 2,
+        outcome: outcome_val
       };
     });
 
@@ -267,7 +278,7 @@ viewof simulation = {
     const intercept = (sumY - slope * sumX) / n;
 
     // --- Dynamic Axis Scaling ---
-    const maxVal = d3.max(data, d => Math.max(Math.abs(d.y1), Math.abs(d.y2))) * 1.1;
+    const maxVal = d3.max(data, d => Math.max(Math.abs(d.y1), Math.abs(d.y2), Math.abs(d.outcome))) * 1.1;
     
     // --- Draw Plot A (Dumbbell) ---
     const widthA = cardA.node().getBoundingClientRect().width || 400;
@@ -289,8 +300,8 @@ viewof simulation = {
 
     svgA.selectAll("line.connect").data(data).join("line").attr("x1", (d, i) => xA(i)).attr("x2", (d, i) => xA(i)).attr("y1", d => yA(d.y1)).attr("y2", d => yA(d.y2)).attr("stroke", colorConnectLine).attr("stroke-width", 0.8); 
     svgA.selectAll("line.mean").data(data).join("line").attr("x1", (d, i) => xA(i) - 4).attr("x2", (d, i) => xA(i) + 4).attr("y1", d => yA(d.mean)).attr("y2", d => yA(d.mean)).attr("stroke", colorMeanLine).attr("stroke-width", 1.5); 
-    svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1);
-    svgA.selectAll("circle.p2").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1);
+    svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
+    svgA.selectAll("circle.p2").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
 
     // --- Draw Plot B (Scatter) ---
     const widthB = cardB.node().getBoundingClientRect().width || 400;
@@ -325,7 +336,7 @@ viewof simulation = {
     svgB.append("text").attr("x", widthB/2).attr("y", heightB - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 1");
     svgB.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("B");
 
-    svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 0.9);
+    svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
 
     // Dynamic Legend for Plot B
     const legendB = svgB.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
@@ -358,22 +369,35 @@ viewof simulation = {
     // Unitless Y-axis: Keep ticks but hide text
     svgC.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleCy).ticks(5).tickFormat("")).attr("color", colorAxisText);
 
-    // Theoretical True Relationship (Beta = 1) passing through the mean
+    const meanOutcome = d3.mean(data, d => d.outcome);
+    const obsBeta = trueBeta * icc;
+
+    // Plot generated outcome data for k=1 (Underneath the lines)
+    svgC.selectAll("circle.scatter-c").data(data).join("circle")
+      .attr("cx", d => scaleCx(d.y1))
+      .attr("cy", d => scaleCy(d.outcome))
+      .attr("r", 4)
+      .attr("fill", colorLightBlue)
+      .attr("stroke", colorDotStroke)
+      .attr("stroke-width", 1)
+      .attr("opacity", 1);
+
+    // Theoretical True Relationship (Beta = 0.5) passing through the mean
     // Styled distinctively as a Solid Green Line
     svgC.append("line")
-      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanY1 + 1 * (-maxVal - meanY1)))
-      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanY1 + 1 * (maxVal - meanY1)))
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + trueBeta * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + trueBeta * (maxVal - meanY1)))
       .attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
 
-    // Flattened Observed Relationship (Beta = ICC, for k=1) passing through the mean
+    // Flattened Observed Relationship (Beta = True Beta * ICC, for k=1) passing through the mean
     // Styled distinctively as a Dashed Orange Line
     svgC.append("line")
-      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanY1 + icc * (-maxVal - meanY1)))
-      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanY1 + icc * (maxVal - meanY1)))
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + obsBeta * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + obsBeta * (maxVal - meanY1)))
       .attr("stroke", colorOkabeVermillion).attr("stroke-dasharray", "6,4").attr("stroke-width", 2.5);
 
-    svgC.append("text").attr("transform", "rotate(-90)").attr("x", -heightC/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Outcome (Unitless)");
-    svgC.append("text").attr("x", widthC/2).attr("y", heightC - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Observed Exposure 1 (k = 1)");
+    svgC.append("text").attr("transform", "rotate(-90)").attr("x", -heightC/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Outcome (unitless)");
+    svgC.append("text").attr("x", widthC/2).attr("y", heightC - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Observed exposure 1 (k = 1)");
     svgC.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("C");
 
     // Dynamic Legend for Plot C
@@ -385,11 +409,11 @@ viewof simulation = {
       
     // True Beta Legend Group
     legendC.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
-    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True Effect (\u03B2 = 1.00)`);
+    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True Effect (\u03B2 = ${trueBeta.toFixed(2)})`);
     
     // Observed Beta Legend Group
     legendC.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorOkabeVermillion).attr("stroke-width", 2.5).attr("stroke-dasharray", "6,4");
-    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Observed Effect (\u03B2 = ${icc.toFixed(2)})`);
+    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Observed Effect (\u03B2 = ${obsBeta.toFixed(2)})`);
 
     // --- Draw Plot D (Spearman-Brown) ---
     const widthD = cardD.node().getBoundingClientRect().width || 400;
@@ -427,7 +451,7 @@ viewof simulation = {
       .attr("cx", d => scaleDx(d.k)).attr("cy", d => scaleDy(d.att))
       .attr("r", d => d.k === 1 ? 6 : 4) // Slightly larger radius for k=1
       .attr("fill", d => d.k === 1 ? colorOkabeVermillion : colorLightBlue) // Match Vermillion color of Observed Beta
-      .attr("stroke", colorDotStroke).attr("stroke-width", 1);
+      .attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
 
     // Perfect recovery line reference at 1.0
     svgD.append("line")
@@ -436,7 +460,7 @@ viewof simulation = {
       .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
 
     svgD.append("text").attr("transform", "rotate(-90)").attr("x", -heightD/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Attenuation Factor");
-    svgD.append("text").attr("x", widthD/2).attr("y", heightD - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurements Averaged (k)");
+    svgD.append("text").attr("x", widthD/2).attr("y", heightD - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurements averaged (k)");
     svgD.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("D");
 
     // Label for the highlighted k=1 dot
