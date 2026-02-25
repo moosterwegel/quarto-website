@@ -204,25 +204,36 @@ viewof simulation = {
       };
     });
 
-    // --- Calculate ICC(2,1) Absolute Agreement from sample data ---
+// --- Calculate icc (ICC 1,1 - One-Way Random Effects, Absolute Agreement) ---
     const n = data.length;
+    const k = 2; // two measurements per subject
     const meanY1 = d3.mean(data, d => d.y1);
     const meanY2 = d3.mean(data, d => d.y2);
     const grandMean = (meanY1 + meanY2) / 2;
 
     // Sum of Squares
-    const ssR = 2 * d3.sum(data, d => Math.pow(d.mean - grandMean, 2)); // Between subjects
-    const ssC = n * (Math.pow(meanY1 - grandMean, 2) + Math.pow(meanY2 - grandMean, 2)); // Between measurements
-    const ssTotal = d3.sum(data, d => Math.pow(d.y1 - grandMean, 2) + Math.pow(d.y2 - grandMean, 2));
-    const ssE = ssTotal - ssR - ssC; // Residual error
+    // SSR (Between-Subjects): Variance of subject means around the grand mean
+    const ssR = k * d3.sum(data, d => Math.pow(d.mean - grandMean, 2));
+    
+    // SSE (Within-Subjects): Variance of individual measurements around their subject's mean.
+    // *Crucially*, if m1 and m2 are different, it forces y1 and y2 further from their own mean, 
+    // inflating this error term and penalizing the ICC.
+    const ssE = d3.sum(data, d => Math.pow(d.y1 - d.mean, 2) + Math.pow(d.y2 - d.mean, 2));
+    
+    const ssTotal = ssR + ssE; 
+    const ssC = 0; // Intentionally ignored in 1-way ANOVA to enforce absolute agreement
 
     // Mean Squares (k = 2 measurements)
     const msR = ssR / (n - 1);
-    const msC = ssC / 1; 
-    const msE = ssE / (n - 1);
+    const msE = ssE / (n * (k - 1)); 
+    const msC = 0; 
+
+    // Extract Variances using Expected Mean Squares algebra
+    const varWithin = msE;
+    const varBetween = (msR - msE) / k;
 
     // ICC Formula
-    let icc = (msR - msE) / (msR + msE + (2 / n) * (msC - msE));
+    let icc = varBetween / (varBetween + varWithin);
     
     // Prevent floating point anomalies from showing negative numbers 
     // (though theoretically possible, it's confusing for a basic demo)
@@ -369,6 +380,10 @@ get_icc_anova <- function(m) {
   MS_within  <- stats["Residuals", "Mean Sq"]
   
   var_within <- MS_within
+  
+  # in anova, MS_between includes both the true between-subject variance AND within-subject noise.
+  # expected MS_between = var_within + (k * var_between), where k is measurements per subject.
+  # to isolate pure var_between, we subtract MS_within and divide by k (here, k = 2)
   var_between <- (MS_between - MS_within) / 2
   
   var_between / (var_between + var_within)
@@ -426,7 +441,7 @@ Besides taking the proportion of variance that is between subjects, we can also 
 
 For example, if within-subject variance is two times the between-subject variance (within-subject variance is 2, between-subject variance is 1, for an ICC of 0.33), there is technically more information about a subject's true mean in the global mean than in that subject's own data if a subject has fewer than 2 observations. In other words, if you had to guess a subject's true mean, you would do better to use the population mean than the single observation you had on that subject. Conversely, with an ICC of 0.2 you would need 4 observations on a subject to match the information from the global mean!
 
-Interestingly, earlier writings on exposure variability calculated this ratio instead of the ICC. 
+Interestingly, some earlier writings on exposure variability in environmental and occupational epidemiology calculated this ratio instead of the ICC. Looking more into it, it seems that this is the standard in biostatistics. 
 
 $$\frac{\sigma_b^2}{\sigma_w^2 + \sigma_b^2} = \frac{1}{1 + \frac{\sigma_w^2}{\sigma_b^2}}$$
 
@@ -451,11 +466,12 @@ Don't correct in prediction modeling
 
 ## Divide by attenutation factor
 
+### Correct variance
+
 ## Regression calibration
 
 ## Simex
 
-## Correct variance
 
 Increases variance probably. Null hypothesis was still valid so this does not increase power.
 

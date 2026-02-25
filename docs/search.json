@@ -284,7 +284,7 @@
     "href": "blog/icc/index.html",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "",
-    "text": "As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variation is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.\nIdeally, to quantify the amount of measurement error we compare our measurement to a ‘true’ measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the ‘true’ measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study.\nIf you can’t know the truth, the next best thing is knowing if you can tell Person A apart from Person B."
+    "text": "As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variability is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.\nIdeally, to quantify the amount of measurement error we compare our measurement to a ‘true’ measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the ‘true’ measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study.\nIf you can’t know the truth, the next best thing is knowing if you can tell Person A apart from Person B."
   },
   {
     "objectID": "blog/icc/index.html#if-error-is-not-random-i.e.-systematic-change-in-exposure",
@@ -305,7 +305,7 @@
     "href": "blog/icc/index.html#divide-by-attenutation-factor",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Divide by attenutation factor",
-    "text": "Divide by attenutation factor"
+    "text": "Divide by attenutation factor\n\nCorrect variance"
   },
   {
     "objectID": "blog/icc/index.html#regression-calibration",
@@ -319,7 +319,7 @@
     "href": "blog/icc/index.html#simex",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Simex",
-    "text": "Simex"
+    "text": "Simex\nIncreases variance probably. Null hypothesis was still valid so this does not increase power."
   },
   {
     "objectID": "blog/icc/index.html#correct-variance",
@@ -333,21 +333,21 @@
     "href": "blog/icc/index.html#crossed-nested-random-slope-and-left-censored-models",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Crossed, nested, random slope, and left-censored models",
-    "text": "Crossed, nested, random slope, and left-censored models\nThe random intercept models we usually use to calculate the ICC are super flexible, and allow you to easily add crossed effects (for example if you also have different raters or different batches (also a different rater in some way)), or specify a three-level model when some of the variation between subjects is simply variation between different countries.\nFor biological data, we can also easily model the left-censoring mechanism for the nondetects using brms and STAN such that we do not need to impute and can directly obtain an estimate of the variances. In this Bayesian framework we can also get the uncertainty of the ICC estimate for free.\nOr add a random slope. Although it gets quite complicated then as the variance depends on at what value you evaluate the random slope."
+    "text": "Crossed, nested, random slope, and left-censored models\nThe random intercept models we usually use to calculate the ICC are super flexible, and allow you to easily add crossed effects (for example if you also have different raters or different batches (also a different rater in some way)), or specify a three-level model when some of the variation between subjects is simply variation between different countries.\nFor biological data, we can also easily model the left-censoring mechanism for the nondetects using brms and STAN such that we do not need to impute and can directly obtain an estimate of the variances. In this Bayesian framework we can also get the uncertainty of the ICC estimate for free.\n\nfit_and_calculate_icc &lt;- function(y, other_data_formula, rhs_formula, \n                                  below_lod_indicator, \n                                  batch_var = NULL, return_model = FALSE, \n                                  write_result_to_disk_path = NULL,\n                                  compound_name = \"\", ...) {\n  require('brms')\n  cmdstanr::set_cmdstan_path('C:/Users/Public/Documents/.cmdstan/cmdstan-2.35.0')\n  \n  # double colons don't place nice with filenames\n  compound_name &lt;- stringr::str_replace(compound_name, ':', 'double-colon')\n  \n  left_cens &lt;- label_left_cens(y, below_lod_indicator)\n  is_left_censored &lt;- any(as.logical(left_cens))\n  \n  if(is_left_censored) {\n    lod &lt;- suppressWarnings(get_lod_per_batch(y, other_data_formula[[batch_var]], below_lod_indicator))\n    y &lt;- ifelse(left_cens, lod, y)\n  }\n  \n  df &lt;- dplyr::bind_cols(other_data_formula, \"y\" = log(y), \"left_cens\" = left_cens * -1, \n                         \"lod\" = ifelse(is_left_censored, log(lod), 'no_lod'))\n  \n  m &lt;- brms::brm(formula = brms::brmsformula(as.formula(glue::glue(\"y | cens(left_cens) ~ {rhs_formula}\"))), \n                 data = df, \n                 backend = 'cmdstanr', ...)\n  \n  p_samples &lt;- brms::as_draws_df(m)\n  \n  icc_draws &lt;- purrr::pmap_df(\n    .l = list(\n      sigma_1 = p_samples[['sigma']],\n      sigma_2 = p_samples[['sd_id__Intercept']]),\n    .f = \\(sigma_1,sigma_2) compile_icc_stats(sigma_1, sigma_2))\n  \n  summary_stats &lt;- posterior::summarise_draws(icc_draws, \"mean\",\"median\",\"sd\",\"mad\",\n                                              ~quantile(.x, probs = c(0.025, 0.975)),\n                                              \"rhat\", \"ess_bulk\", \"ess_tail\")\n  \n  r &lt;- list(\"summary_stats\" = summary_stats, \"summary_model\" = broom.mixed::tidy(m))\n  \n  if(!is.null(write_result_to_disk_path)) {\n    readr::write_rds(r, here::here(write_result_to_disk_path, glue::glue(\"{compound_name}.rds\")))\n  }\n  \n  if(return_model) {\n    return(list(\"model\" = m, \"summary_stats\" = summary_stats))\n  }\n  \n  return(r)\n}\n\ncompile_icc_stats &lt;- function(sigma_1, sigma_2) {\n  return(list(\"sigma_1\" = sigma_1,\n              \"sigma_2\" = sigma_2,\n              \"icc\" = sigma_2^2/(sigma_1^2 + sigma_2^2)))\n}\n\nOr add a random slope. Although it gets quite complicated then as the variance depends on at what value you evaluate the random slope."
   },
   {
     "objectID": "blog/icc/index.html#bland-altman-plot",
     "href": "blog/icc/index.html#bland-altman-plot",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Bland-Altman plot",
-    "text": "Bland-Altman plot\nICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude unacceptable is clinically unacceptable). A Bland-Altman plot is a better device to test this.\nOne of the most cited papers actually"
+    "text": "Bland-Altman plot\nICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude unacceptable is clinically unacceptable). A Bland-Altman plot is a better device to test this.\nStandard error of measurement?\nOne of the most cited papers actually"
   },
   {
     "objectID": "blog/icc/index.html#other-fields",
     "href": "blog/icc/index.html#other-fields",
     "title": "A guide to intraclass correlation coefficients (in environmental epidemiology)",
     "section": "Other fields",
-    "text": "Other fields\n\nBiology\nRepeatability.\n\n\nPsychometrics\nWeird shit. Rater agreement mostly?\nTest-retest\nAgreement\nConsistency, absolute\nConnection Spearman to Rank ICC?\nReproducibility?\nBMI ICC of 0.9 as far as it’s an absolute measurement. Height close to 1."
+    "text": "Other fields\n\nBiology\nRepeatability.\n\n\nPsychometrics\nWeird shit. Rater agreement mostly?\nTest-retest\nAgreement\nConsistency, absolute\nConnection Spearman to Rank ICC?\nReproducibility?\nMeasuring cluster effects?\nBMI ICC of 0.9 as far as it’s an absolute measurement. Height close to 1."
   },
   {
     "objectID": "blog/icc/index.html#footnotes",
