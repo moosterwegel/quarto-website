@@ -164,7 +164,7 @@ viewof simulation = {
   const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
   
   const iccDiv = metricsCol.append("div").attr("class", "metric-box");
-  iccDiv.append("div").attr("class", "metric-label").text("ICC");
+  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
   const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
 
   const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
@@ -365,15 +365,26 @@ viewof simulation = {
     const meanOutcome = d3.mean(data, d => d.outcome);
     const obsBeta = trueBeta * icc;
 
-    // Plot generated outcome data for k=1 (Underneath the lines)
+    // Plot TRUE underlying exposure data (Grey dots -> Green dots)
+    // We add m1 to trueVal to keep it on the same x-axis scale as the observed y1
+    svgC.selectAll("circle.scatter-true").data(data).join("circle")
+      .attr("cx", d => scaleCx(d.trueVal + m1))
+      .attr("cy", d => scaleCy(d.outcome))
+      .attr("r", 4)
+      .attr("fill", colorOkabeGreen)
+      .attr("stroke", colorDotStroke)
+      .attr("stroke-width", 1)
+      .attr("opacity", 0.5);
+
+    // Plot generated outcome data for k=1 (Light Blue -> Vermillion dots)
     svgC.selectAll("circle.scatter-c").data(data).join("circle")
       .attr("cx", d => scaleCx(d.y1))
       .attr("cy", d => scaleCy(d.outcome))
       .attr("r", 4)
-      .attr("fill", colorLightBlue)
+      .attr("fill", colorOkabeVermillion)
       .attr("stroke", colorDotStroke)
       .attr("stroke-width", 1)
-      .attr("opacity", 1);
+      .attr("opacity", 0.7);
 
     // Theoretical True Relationship (Beta = 0.5) passing through the mean
     // Styled distinctively as a Solid Green Line
@@ -397,16 +408,18 @@ viewof simulation = {
     const legendC = svgC.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
     
     legendC.append("rect")
-      .attr("x", -5).attr("y", -5).attr("width", 175).attr("height", 44)
+      .attr("x", -5).attr("y", -5).attr("width", 190).attr("height", 44)
       .attr("fill", "rgba(255, 255, 255, 0.9)").attr("stroke", "#dee2e6").attr("rx", 4);
       
     // True Beta Legend Group
+    legendC.append("circle").attr("cx", 15).attr("cy", 8).attr("r", 4).attr("fill", colorOkabeGreen).attr("opacity", 0.5);
     legendC.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
-    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True Effect (\u03B2 = ${trueBeta.toFixed(2)})`);
+    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True data & fit (\u03B2 = ${trueBeta.toFixed(2)})`);
     
     // Observed Beta Legend Group
+    legendC.append("circle").attr("cx", 15).attr("cy", 26).attr("r", 4).attr("fill", colorOkabeVermillion).attr("opacity", 0.7);
     legendC.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorOkabeVermillion).attr("stroke-width", 2.5).attr("stroke-dasharray", "6,4");
-    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Observed Effect (\u03B2 = ${obsBeta.toFixed(2)})`);
+    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Obs. data & fit (\u03B2 = ${obsBeta.toFixed(2)})`);
 
     // --- Draw Plot D (Spearman-Brown) ---
     const widthD = cardD.node().getBoundingClientRect().width || 400;
