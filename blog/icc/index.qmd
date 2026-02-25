@@ -13,7 +13,7 @@ execute:
 citation: true
 bibliography: references.bib
 ---
-As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variation is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.
+As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variability is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.
 
 Ideally, to quantify the amount of measurement error we compare our measurement to a 'true' measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the 'true' measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study. 
 
@@ -422,18 +422,26 @@ cholesterol |>
   dplyr::pull()
 
 ```
-Besides taking the proportion of variance that is between-subject, we can also take the ratio of within- to between-subject variance. Gelman offers an interesting information theory perspective on this ratio. Namely, it quantifies the information content of the population distribution in terms of actual samples. Specifically, the value represents the number of observations you would need from a single subject (i.e., class) to match the information already provided by the population prior -- the global mean.[^1]
+Besides taking the proportion of variance that is between subjects, we can also take the ratio of within- to between-subject variance. Gelman offers an interesting information theory perspective on this ratio. Namely, it quantifies the information content of the population distribution in terms of actual samples. Specifically, the value represents the number of observations you would need from a single subject (i.e., class) to match the information already provided by the population prior -- the global mean.[^1]
 
 For example, if within-subject variance is two times the between-subject variance (within-subject variance is 2, between-subject variance is 1, for an ICC of 0.33), there is technically more information about a subject's true mean in the global mean than in that subject's own data if a subject has fewer than 2 observations. In other words, if you had to guess a subject's true mean, you would do better to use the population mean than the single observation you had on that subject. Conversely, with an ICC of 0.2 you would need 4 observations on a subject to match the information from the global mean!
+
+Interestingly, earlier writings on exposure variability calculated this ratio instead of the ICC. 
+
+$$\frac{\sigma_b^2}{\sigma_w^2 + \sigma_b^2} = \frac{1}{1 + \frac{\sigma_w^2}{\sigma_b^2}}$$
 
 [^1]: This calculation is derived from equating the precision (inverse variance) of the population prior with that of the sample mean. From an information theory perspective, the standard deviation quantifies uncertainty -- meaning a narrower distribution (higher precision) contains more information. By setting the standard deviation of the between-subject distribution ($\sigma_{\text{between}}$) equal to the standard error of the within-subject sample mean ($\sigma_{\text{within}}/\sqrt{n}$), we identify the point where the prior and the data provide equivalent information. Solving for $n$ yields the variance ratio $n = \sigma^2_{\text{within}} / \sigma^2_{\text{between}}$. This value represents the "equivalent sample size" of the prior. Practically, this defines the tipping point for partial pooling: below this threshold, the multilevel model shrinks estimates toward the global mean; above it, the specific subject's data dominates.
 
 # Attentuation of effects
 
+Spearman-Brown
+
 # Planning studies
 Burstyn post
 
 Lakind
+
+BRAT software
 ## Substudy
 
 ## Physical pooling
@@ -524,6 +532,8 @@ Or add a random slope. Although it gets quite complicated then as the variance d
 ## Bland-Altman plot
 ICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude unacceptable is clinically unacceptable). A Bland-Altman plot is a better device to test this.
 
+Standard error of measurement?
+
 One of the most cited papers actually
 
 ## Other fields
@@ -543,6 +553,8 @@ Consistency, absolute
 Connection Spearman to Rank ICC?
 
 Reproducibility?
+
+Measuring cluster effects?
 
 
 BMI ICC of 0.9 as far as it's an absolute measurement. Height close to 1. 
