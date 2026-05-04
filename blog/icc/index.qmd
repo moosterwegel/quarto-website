@@ -13,7 +13,7 @@ execute:
 citation: true
 bibliography: references.bib
 ---
-As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variability is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation over time can introduce classical measurement error. This can complicate our studies that are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.
+As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health. However, not all variability is productive to the conduct of our studies. For example, in environmental epidemiology you have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation can introduce classical measurement error and complicate our studies which are often limited to a single measurement per subject. In this post, I will go over the intraclass correlation to quantify the useful between-subject variability in your population.
 
 Ideally, to quantify the amount of measurement error we compare our measurement to a 'true' measurement or a gold standard. This would be a validity study. However, for many exposures in environmental epidemiology this is infeasible. [example]. Often, the best we can do then is assume that the 'true' measurement is the average over time, obtain multiple, temporally separated measurements and compare those. In epidemiology, we would call this a reliability (of the mean) study. 
 
@@ -42,7 +42,7 @@ viewof simulation = {
   // --- 1. Setup Container & Layout ---
   const container = d3.create("div")
     .style("font-family", "Inter, sans-serif")
-    .style("width", "100%")
+    // Removed explicit width: 100% to prevent border-box overflow in some notebook environments
     .style("background-color", "#f8f9fa") 
     .style("border", "1px solid #dee2e6")
     .style("border-radius", "8px")
@@ -63,7 +63,7 @@ viewof simulation = {
     }
     .sliders-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 15px 25px;
       flex: 1;
     }
@@ -83,18 +83,24 @@ viewof simulation = {
       border-radius: 6px;
       border: 1px solid #dee2e6;
       text-align: center;
-      min-width: 110px;
+      min-width: 120px;
+    }
+    .metric-label-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .metric-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
     .metric-number { font-size: 20px; font-weight: 700; color: #343a40; line-height: 1.2; }
     
     .plots-container {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      /* Use minmax(0, 1fr) to prevent SVG from forcing grid to overflow horizontally */
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
+      gap: 15px;
     }
     @media (max-width: 768px) {
-      .plots-container { grid-template-columns: 1fr; }
+      .plots-container { grid-template-columns: minmax(0, 1fr); }
     }
 
     .plot-card {
@@ -118,13 +124,79 @@ viewof simulation = {
       font-family: "Inter", sans-serif;
       font-size: 11px;
     }
+
+    /* --- Tooltip Styles --- */
+    .info-tooltip-container {
+      position: relative;
+      display: inline-block;
+      margin-left: 6px;
+    }
+    .info-icon {
+      font-size: 10px;
+      color: #6c757d;
+      cursor: help;
+      border: 1.5px solid #6c757d;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-style: normal;
+      font-weight: bold;
+      opacity: 0.8;
+    }
+    .info-icon:hover {
+      opacity: 1;
+      color: #343a40;
+      border-color: #343a40;
+    }
+    .tooltip-text {
+      visibility: hidden;
+      width: 280px; /* Slightly wider to fit math comfortably */
+      background-color: #343a40;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 12px;
+      position: absolute;
+      z-index: 100; /* Ensure it stays above the plots */
+      top: 135%; 
+      /* Anchor to the right edge so it expands leftward into the screen */
+      right: -10px; 
+      left: auto;
+      margin-left: 0; 
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-size: 12px;
+      font-weight: normal;
+      line-height: 1.5;
+      text-transform: none;
+      letter-spacing: normal;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Drop shadow to separate from charts */
+    }
+    .tooltip-text::after {
+      content: "";
+      position: absolute;
+      bottom: 100%; 
+      /* Align arrow with the new right-anchored box */
+      right: 14px; 
+      left: auto;
+      margin-left: 0;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent #343a40 transparent; 
+    }
+    .info-tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
   `);
 
   // --- 3. DOM Elements Creation ---
   const controlsDiv = container.append("div").attr("class", "control-panel");
   const slidersGrid = controlsDiv.append("div").attr("class", "sliders-grid");
   
-  // Helper function for building the standardized sliders
   function createSlider(config) {
     const sliderContainer = d3.create("div").style("display", "flex").style("flex-direction", "column").style("gap", "4px");
     
@@ -149,8 +221,8 @@ viewof simulation = {
 
   // Create Sliders
   const sliders = {
-    b: createSlider({ label: "Between-subject variance (σ_b)", min: 0.1, max: 5.0, step: 0.1, value: 3.0 }),
-    w: createSlider({ label: "Within-subject variance (σ_w)", min: 0.1, max: 5.0, step: 0.1, value: 1.0 }),
+    b: createSlider({ label: "Between-subject variance (σ²_b)", min: 0.1, max: 5.0, step: 0.1, value: 3.0 }),
+    w: createSlider({ label: "Within-subject variance (σ²_w)", min: 0.1, max: 5.0, step: 0.1, value: 1.0 }),
     m1: createSlider({ label: "Mean measurement 1 (μ₁)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 }),
     m2: createSlider({ label: "Mean measurement 2 (μ₂)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 })
   };
@@ -163,8 +235,15 @@ viewof simulation = {
   // Metrics Display Column
   const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
   
+  // ICC Display with Tooltip
   const iccDiv = metricsCol.append("div").attr("class", "metric-box");
-  iccDiv.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  const iccHeader = iccDiv.append("div").attr("class", "metric-label-container");
+  iccHeader.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  
+  const tooltipContainer = iccHeader.append("div").attr("class", "info-tooltip-container");
+  tooltipContainer.append("i").attr("class", "info-icon").text("i");
+  const tooltipText = tooltipContainer.append("div").attr("class", "tooltip-text");
+
   const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
 
   const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
@@ -174,14 +253,12 @@ viewof simulation = {
   // Plots Section
   const plotsDiv = container.append("div").attr("class", "plots-container");
   
-  // Row 1: Plots A and B
   const cardA = plotsDiv.append("div").attr("class", "plot-card");
   const svgA = cardA.append("svg").attr("width", "100%").attr("height", 320);
   
   const cardB = plotsDiv.append("div").attr("class", "plot-card");
   const svgB = cardB.append("svg").attr("width", "100%").attr("height", 320);
 
-  // Row 2: Plots C and D
   const cardC = plotsDiv.append("div").attr("class", "plot-card");
   const svgC = cardC.append("svg").attr("width", "100%").attr("height", 320);
   
@@ -213,13 +290,25 @@ viewof simulation = {
     sliders.m1.valueDisplay.text(m1.toFixed(1));
     sliders.m2.valueDisplay.text(m2.toFixed(1));
 
+    // Update Theoretical ICC in Tooltip
+    const theoreticalICC = sb / (sb + sw);
+    tooltipText.html(`
+      <b>Sampling Variability</b><br>
+      The displayed ICC is the <i>empirical</i> value calculated from our simulated sample of N=${nSubjects}.<br><br>
+      Because of random sampling error, it fluctuates around the <i>theoretical</i> population ICC of (assuming equal means) <b>${theoreticalICC.toFixed(2)}</b> [ ${sb.toFixed(1)} / (${sb.toFixed(1)} + ${sw.toFixed(1)}) For N = 25 this can be quite a great discrepancy.].
+    `);
+
     const trueBeta = 0.5; // Set the standard true effect size
 
+    // Apply the standard deviation fix (square root of variance)
     const data = baseData.map(d => {
-      const trueVal = d.z_true * sb;
-      const y1_val = trueVal + (d.z_err1 * sw) + m1;
-      const y2_val = trueVal + (d.z_err2 * sw) + m2;
-      const outcome_val = (trueVal * trueBeta) + m1 + (d.z_err_out * 1.0); // Generate unitless outcome with true Beta
+      const sd_b = Math.sqrt(sb);
+      const sd_w = Math.sqrt(sw);
+
+      const trueVal = d.z_true * sd_b;
+      const y1_val = trueVal + (d.z_err1 * sd_w) + m1;
+      const y2_val = trueVal + (d.z_err2 * sd_w) + m2;
+      const outcome_val = (trueVal * trueBeta) + m1 + (d.z_err_out * 1.0); 
       return {
         id: d.id,
         trueVal: trueVal,
@@ -366,7 +455,6 @@ viewof simulation = {
     const obsBeta = trueBeta * icc;
 
     // Plot TRUE underlying exposure data (Grey dots -> Green dots)
-    // We add m1 to trueVal to keep it on the same x-axis scale as the observed y1
     svgC.selectAll("circle.scatter-true").data(data).join("circle")
       .attr("cx", d => scaleCx(d.trueVal + m1))
       .attr("cy", d => scaleCy(d.outcome))
@@ -387,14 +475,12 @@ viewof simulation = {
       .attr("opacity", 0.7);
 
     // Theoretical True Relationship (Beta = 0.5) passing through the mean
-    // Styled distinctively as a Solid Green Line
     svgC.append("line")
       .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + trueBeta * (-maxVal - meanY1)))
       .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + trueBeta * (maxVal - meanY1)))
       .attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
 
     // Flattened Observed Relationship (Beta = True Beta * ICC, for k=1) passing through the mean
-    // Styled distinctively as a Dashed Orange Line
     svgC.append("line")
       .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + obsBeta * (-maxVal - meanY1)))
       .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + obsBeta * (maxVal - meanY1)))
@@ -435,8 +521,6 @@ viewof simulation = {
     svgD.append("g").attr("transform", `translate(0,${heightD - margin.bottom})`).call(d3.axisBottom(scaleDx).ticks(10).tickFormat(d3.format("d"))).attr("color", colorAxisText);
     svgD.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleDy).ticks(5)).attr("color", colorAxisText);
 
-    // Generate Spearman-Brown data mapped from current variance ratio
-    // Use Math.max to prevent division by zero or negative lambda issues
     const lambda = varWithin / Math.max(0.000001, varBetween); 
     const kData = d3.range(1, 11).map(k => ({ k: k, att: 1 / (1 + lambda / k) }));
 
