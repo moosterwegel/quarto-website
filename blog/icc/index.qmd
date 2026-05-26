@@ -1,0 +1,960 @@
+---
+title: "Intraclass correlation coefficients for environmental epidemiologists"
+date: "2026-05-26"
+format: 
+  html: 
+      echo: true
+      message: false
+      warning: false
+      code-fold: true
+      highlight-style: arrow
+      fig-height: 4
+execute:
+  cache: true
+citation: true
+bibliography: references.bib
+nocite: |
+  @Rose1992, @vansmedenReflectionModernMethods2020, @Armstrong1992, @Kriebel2010, @Gustafson2003
+---
+As Geoffrey Rose powerfully illustrated over 40 years ago, we need variability in our studies to study health (@rose1985sick). However, not all variability is productive to the conduct of our etiological studies. For example, in molecular and environmental epidemiology we have technical variation from biological assays, and exposures that not only vary over person and place but also over time. Such variation can introduce classical measurement error and complicate our analyses.[^biomarker] This is particularly challenging because our ultimate outcome of interest is usually on the subject level, yet we are often forced to rely on a single exposure measurement per subject. In this post, I will go over the intraclass correlation (ICC) to quantify the useful between-subject variability in your study population.
+
+[^biomarker]: In occupational epidemiology and air pollution epidemiology, Berkson measurement error is also prevalent. This post will exclusively focus on classical measurement error, e.g., biomarkers.
+
+The interactive tool below lets you build intuition for the agreement ICC -- the form most commonly used in epidemiology. The precise definition and a walkthrough of the four panels follow underneath it. 
+
+::: {.column-page}
+```{ojs}
+d3 = require("d3")
+
+viewof simulation = {
+  // --- Constants for Styling ---
+  const colorOkabeBlue = "#0072B2"; 
+  const colorOkabeVermillion = "#D55E00";
+  const colorOkabeGreen = "#009E73";
+  const colorLightBlue = "#78b7c5";
+  const colorDotStroke = "white";
+  const colorGridLine = "#f1f3f5"; 
+  const colorAxisText = "#6c757d";
+  const colorConnectLine = "#ced4da"; 
+  const colorMeanLine = "#495057"; 
+
+  // --- 1. Setup Container & Layout ---
+  const container = d3.create("div")
+    .style("font-family", "Inter, sans-serif")
+    // Removed explicit width: 100% to prevent border-box overflow in some notebook environments
+    .style("background-color", "#f8f9fa") 
+    .style("border", "1px solid #dee2e6")
+    .style("border-radius", "8px")
+    .style("padding", "15px")
+    .style("box-sizing", "border-box");
+
+  // --- 2. CSS Styles ---
+  const style = container.append("style");
+  style.html(`
+    .control-panel {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 15px 25px;
+      flex: 1;
+    }
+    @media (max-width: 600px) {
+      .control-panel { flex-direction: column; align-items: stretch; }
+      .sliders-grid { grid-template-columns: 1fr; }
+    }
+    .metrics-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .metric-box {
+      background: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+      text-align: center;
+      min-width: 120px;
+    }
+    .metric-label-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .metric-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; }
+    .metric-number { font-size: 20px; font-weight: 700; color: #343a40; line-height: 1.2; }
+    
+    .plots-container {
+      display: grid;
+      /* Use minmax(0, 1fr) to prevent SVG from forcing grid to overflow horizontally */
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
+      gap: 15px;
+    }
+    @media (max-width: 768px) {
+      .plots-container { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .plot-card {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .axis-label {
+      font-weight: bold;
+      fill: ${colorAxisText};
+      font-size: 12px;
+    }
+    
+    /* Override D3's native injected axis font */
+    .tick text {
+      font-family: "Inter", sans-serif;
+      font-size: 11px;
+    }
+
+    /* --- Tooltip Styles --- */
+    .info-tooltip-container {
+      position: relative;
+      display: inline-block;
+      margin-left: 6px;
+    }
+    .info-icon {
+      font-size: 10px;
+      color: #6c757d;
+      cursor: help;
+      border: 1.5px solid #6c757d;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-style: normal;
+      font-weight: bold;
+      opacity: 0.8;
+    }
+    .info-icon:hover {
+      opacity: 1;
+      color: #343a40;
+      border-color: #343a40;
+    }
+    .tooltip-text {
+      visibility: hidden;
+      width: 280px; /* Slightly wider to fit math comfortably */
+      background-color: #343a40;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 12px;
+      position: absolute;
+      z-index: 100; /* Ensure it stays above the plots */
+      top: 135%; 
+      /* Anchor to the right edge so it expands leftward into the screen */
+      right: -10px; 
+      left: auto;
+      margin-left: 0; 
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-size: 12px;
+      font-weight: normal;
+      line-height: 1.5;
+      text-transform: none;
+      letter-spacing: normal;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Drop shadow to separate from charts */
+    }
+    .tooltip-text::after {
+      content: "";
+      position: absolute;
+      bottom: 100%; 
+      /* Align arrow with the new right-anchored box */
+      right: 14px; 
+      left: auto;
+      margin-left: 0;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent #343a40 transparent; 
+    }
+    .info-tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+  `);
+
+  // --- 3. DOM Elements Creation ---
+  const controlsDiv = container.append("div").attr("class", "control-panel");
+  const slidersGrid = controlsDiv.append("div").attr("class", "sliders-grid");
+  
+  function createSlider(config) {
+    const sliderContainer = d3.create("div").style("display", "flex").style("flex-direction", "column").style("gap", "4px");
+    
+    const labelRow = sliderContainer.append("div").style("display", "flex").style("justify-content", "space-between").style("align-items", "center");
+    labelRow.append("label").style("font-weight", "600").style("font-size", "13px").style("color", "#495057").text(config.label);
+    const valueDisplay = labelRow.append("div").style("font-size", "12px").style("color", "#6c757d").style("font-weight", "500");
+    
+    const slider = sliderContainer.append("input")
+      .attr("type", "range")
+      .attr("min", config.min)
+      .attr("max", config.max)
+      .attr("step", config.step)
+      .property("value", config.value)
+      .style("width", "100%");
+      
+    const rangeDisplay = sliderContainer.append("div").style("display", "flex").style("justify-content", "space-between").style("font-size", "11px").style("color", "#6c757d");
+    rangeDisplay.append("span").text(config.min.toFixed(1));
+    rangeDisplay.append("span").text(config.max.toFixed(1));
+    
+    return { container: sliderContainer, slider, valueDisplay };
+  }
+
+  // Create Sliders
+  const sliders = {
+    b: createSlider({ label: "Between-subject variance (σ²_b)", min: 0.1, max: 5.0, step: 0.1, value: 3.0 }),
+    w: createSlider({ label: "Within-subject variance (σ²_w)", min: 0.1, max: 5.0, step: 0.1, value: 1.0 }),
+    m1: createSlider({ label: "Mean measurement 1 (μ₁)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 }),
+    m2: createSlider({ label: "Mean measurement 2 (μ₂)", min: -5.0, max: 5.0, step: 0.5, value: 0.0 })
+  };
+
+  slidersGrid.append(() => sliders.b.container.node());
+  slidersGrid.append(() => sliders.w.container.node());
+  slidersGrid.append(() => sliders.m1.container.node());
+  slidersGrid.append(() => sliders.m2.container.node());
+
+  // Metrics Display Column
+  const metricsCol = controlsDiv.append("div").attr("class", "metrics-col");
+  
+  // ICC Display with Tooltip
+  const iccDiv = metricsCol.append("div").attr("class", "metric-box");
+  const iccHeader = iccDiv.append("div").attr("class", "metric-label-container");
+  iccHeader.append("div").attr("class", "metric-label").text("ICC (Absolute)");
+  
+  const tooltipContainer = iccHeader.append("div").attr("class", "info-tooltip-container");
+  tooltipContainer.append("i").attr("class", "info-icon").text("i");
+  const tooltipText = tooltipContainer.append("div").attr("class", "tooltip-text");
+
+  const iccNum = iccDiv.append("div").attr("class", "metric-number").text("0.90");
+
+  const pearsonDiv = metricsCol.append("div").attr("class", "metric-box");
+  pearsonDiv.append("div").attr("class", "metric-label").text("Pearson r");
+  const pearsonNum = pearsonDiv.append("div").attr("class", "metric-number").text("0.90");
+
+  // Plots Section
+  const plotsDiv = container.append("div").attr("class", "plots-container");
+  
+  const cardA = plotsDiv.append("div").attr("class", "plot-card");
+  const svgA = cardA.append("svg").attr("width", "100%").attr("height", 320);
+  
+  const cardB = plotsDiv.append("div").attr("class", "plot-card");
+  const svgB = cardB.append("svg").attr("width", "100%").attr("height", 320);
+
+  const cardC = plotsDiv.append("div").attr("class", "plot-card");
+  const svgC = cardC.append("svg").attr("width", "100%").attr("height", 320);
+  
+  const cardD = plotsDiv.append("div").attr("class", "plot-card");
+  const svgD = cardD.append("svg").attr("width", "100%").attr("height", 320);
+
+  // --- 4. Logic & Simulation ---
+  const nSubjects = 25;
+  const margin = {top: 15, right: 15, bottom: 35, left: 45};
+  
+  const rng = d3.randomNormal(0, 1);
+  const baseData = Array.from({length: nSubjects}, (_, i) => ({
+    id: i,
+    z_true: rng(),
+    z_err1: rng(),
+    z_err2: rng(),
+    z_err_out: rng()
+  })).sort((a,b) => a.z_true - b.z_true); 
+
+  function update() {
+    const sb = +sliders.b.slider.property("value");
+    const sw = +sliders.w.slider.property("value");
+    const m1 = +sliders.m1.slider.property("value");
+    const m2 = +sliders.m2.slider.property("value");
+    
+    sliders.b.valueDisplay.text(sb.toFixed(1));
+    sliders.w.valueDisplay.text(sw.toFixed(1));
+    sliders.m1.valueDisplay.text(m1.toFixed(1));
+    sliders.m2.valueDisplay.text(m2.toFixed(1));
+    const theoreticalICC = sb / (sb + sw);
+    tooltipText.html(`
+      <b>Sampling Variability</b><br>
+      The displayed ICC is the <i>empirical</i> value calculated from our simulated sample of N=${nSubjects}.<br><br>
+      Because of random sampling error, it fluctuates around the <i>theoretical</i> population ICC of (assuming equal means) <b>${theoreticalICC.toFixed(2)}</b> [${sb.toFixed(1)} / (${sb.toFixed(1)} + ${sw.toFixed(1)}) — for N = 25, this can be quite a discrepancy].
+    `);
+
+    const trueBeta = 0.5; 
+
+    const data = baseData.map(d => {
+      const sd_b = Math.sqrt(sb);
+      const sd_w = Math.sqrt(sw);
+
+      const trueVal = d.z_true * sd_b;
+      const y1_val = trueVal + (d.z_err1 * sd_w) + m1;
+      const y2_val = trueVal + (d.z_err2 * sd_w) + m2;
+      const outcome_val = (trueVal * trueBeta) + m1 + (d.z_err_out * 1.0); 
+      return {
+        id: d.id,
+        trueVal: trueVal,
+        y1: y1_val,
+        y2: y2_val,
+        mean: (y1_val + y2_val) / 2,
+        outcome: outcome_val
+      };
+    });
+
+    // --- Calculate ICC ---
+    const n = data.length;
+    const k = 2;
+    const meanY1 = d3.mean(data, d => d.y1);
+    const meanY2 = d3.mean(data, d => d.y2);
+    const grandMean = (meanY1 + meanY2) / 2;
+
+    const ssR = k * d3.sum(data, d => Math.pow(d.mean - grandMean, 2));
+    const ssE = d3.sum(data, d => Math.pow(d.y1 - d.mean, 2) + Math.pow(d.y2 - d.mean, 2));
+    
+    const msR = ssR / (n - 1);
+    const msE = ssE / (n * (k - 1)); 
+
+    const varWithin = msE;
+    const varBetween = (msR - msE) / k;
+
+    let icc = varBetween / (varBetween + varWithin);
+    icc = Math.max(0, icc); 
+    iccNum.text(icc.toFixed(2));
+
+    // --- Calculate Pearson r and Linear Trend ---
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+    data.forEach(d => {
+      sumX += d.y1;
+      sumY += d.y2;
+      sumXY += d.y1 * d.y2;
+      sumX2 += d.y1 * d.y1;
+      sumY2 += d.y2 * d.y2;
+    });
+    
+    const denX = (n * sumX2) - (sumX * sumX);
+    const denY = (n * sumY2) - (sumY * sumY);
+    const num = (n * sumXY) - (sumX * sumY);
+    
+    const pearson = (denX <= 0 || denY <= 0) ? 0 : num / Math.sqrt(denX * denY);
+    pearsonNum.text(pearson.toFixed(2));
+    
+    const slope = denX <= 0 ? 0 : num / denX;
+    const intercept = (sumY - slope * sumX) / n;
+
+    // --- Dynamic Axis Scaling ---
+    const maxVal = d3.max(data, d => Math.max(Math.abs(d.y1), Math.abs(d.y2), Math.abs(d.outcome))) * 1.1;
+    
+    // --- Draw Plot A (Dumbbell) ---
+    const widthA = cardA.node().getBoundingClientRect().width || 400;
+    const heightA = 320;
+    svgA.attr("viewBox", `0 0 ${widthA} ${heightA}`);
+    svgA.selectAll("*").remove();
+
+    const xA = d3.scaleLinear().domain([-1, nSubjects]).range([margin.left, widthA - margin.right]);
+    const yA = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightA - margin.bottom, margin.top]);
+
+    svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5).tickSize(-widthA + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(6).tickSize(-heightA + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgA.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(yA).ticks(5)).attr("color", colorAxisText);
+    svgA.append("g").attr("transform", `translate(0,${heightA - margin.bottom})`).call(d3.axisBottom(xA).ticks(0)).attr("color", colorAxisText);
+
+    svgA.append("text").attr("transform", "rotate(-90)").attr("x", -heightA/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement value");
+    svgA.append("text").attr("x", widthA/2).attr("y", heightA - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Subjects (ranked by mean)");
+    svgA.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("A");
+
+    svgA.selectAll("line.connect").data(data).join("line").attr("x1", (d, i) => xA(i)).attr("x2", (d, i) => xA(i)).attr("y1", d => yA(d.y1)).attr("y2", d => yA(d.y2)).attr("stroke", colorConnectLine).attr("stroke-width", 0.8); 
+    svgA.selectAll("line.mean").data(data).join("line").attr("x1", (d, i) => xA(i) - 4).attr("x2", (d, i) => xA(i) + 4).attr("y1", d => yA(d.mean)).attr("y2", d => yA(d.mean)).attr("stroke", colorMeanLine).attr("stroke-width", 1.5); 
+    svgA.selectAll("circle.p1").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y1)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
+    svgA.selectAll("circle.p2").data(data).join("circle").attr("cx", (d, i) => xA(i)).attr("cy", d => yA(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
+
+    // --- Draw Plot B (Scatter) ---
+    const widthB = cardB.node().getBoundingClientRect().width || 400;
+    const heightB = 320;
+    svgB.attr("viewBox", `0 0 ${widthB} ${heightB}`);
+    svgB.selectAll("*").remove();
+
+    const scaleB = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.left, widthB - margin.right]);
+    const scaleBy = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightB - margin.bottom, margin.top]);
+
+    svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`).call(d3.axisBottom(scaleB).ticks(5).tickSize(-heightB + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgB.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleBy).ticks(5).tickSize(-widthB + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgB.append("g").attr("transform", `translate(0,${heightB - margin.bottom})`).call(d3.axisBottom(scaleB).ticks(5)).attr("color", colorAxisText);
+    svgB.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleBy).ticks(5)).attr("color", colorAxisText);
+
+    // Identity Line (y=x)
+    svgB.append("line")
+      .attr("x1", scaleB(-maxVal)).attr("y1", scaleBy(-maxVal))
+      .attr("x2", scaleB(maxVal)).attr("y2", scaleBy(maxVal))
+      .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
+
+    // Trend Line (Linear Regression based on Pearson)
+    svgB.append("line")
+      .attr("x1", scaleB(-maxVal))
+      .attr("y1", scaleBy(slope * -maxVal + intercept))
+      .attr("x2", scaleB(maxVal))
+      .attr("y2", scaleBy(slope * maxVal + intercept))
+      .attr("stroke", colorMeanLine)
+      .attr("stroke-width", 2);
+
+    svgB.append("text").attr("transform", "rotate(-90)").attr("x", -heightB/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 2");
+    svgB.append("text").attr("x", widthB/2).attr("y", heightB - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurement 1");
+    svgB.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("B");
+
+    svgB.selectAll("circle.scatter").data(data).join("circle").attr("cx", d => scaleB(d.y1)).attr("cy", d => scaleBy(d.y2)).attr("r", 4).attr("fill", colorLightBlue).attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
+
+    // Dynamic Legend for Plot B
+    const legendB = svgB.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
+    
+    legendB.append("rect")
+      .attr("x", -5).attr("y", -5).attr("width", 115).attr("height", 44)
+      .attr("fill", "rgba(255, 255, 255, 0.9)").attr("stroke", "#dee2e6").attr("rx", 4);
+      
+    // Identity Line Legend Group
+    legendB.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", "#dc3545").attr("stroke-width", 1).attr("stroke-dasharray", "4");
+    legendB.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text("Identity (y=x)");
+    
+    // Linear Fit Legend Group
+    legendB.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorMeanLine).attr("stroke-width", 2);
+    legendB.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text("Linear Fit");
+
+    // --- Draw Plot C (Flattened Slope) ---
+    const widthC = cardC.node().getBoundingClientRect().width || 400;
+    const heightC = 320;
+    svgC.attr("viewBox", `0 0 ${widthC} ${heightC}`);
+    svgC.selectAll("*").remove();
+
+    const scaleCx = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.left, widthC - margin.right]);
+    const scaleCy = d3.scaleLinear().domain([-maxVal, maxVal]).range([heightC - margin.bottom, margin.top]);
+
+    svgC.append("g").attr("transform", `translate(0,${heightC - margin.bottom})`).call(d3.axisBottom(scaleCx).ticks(5).tickSize(-heightC + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgC.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleCy).ticks(5).tickSize(-widthC + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgC.append("g").attr("transform", `translate(0,${heightC - margin.bottom})`).call(d3.axisBottom(scaleCx).ticks(5)).attr("color", colorAxisText);
+    
+    // Unitless Y-axis: Keep ticks but hide text
+    svgC.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleCy).ticks(5).tickFormat("")).attr("color", colorAxisText);
+
+    const meanOutcome = d3.mean(data, d => d.outcome);
+    const obsBeta = trueBeta * icc;
+
+    // Plot TRUE underlying exposure data (Grey dots -> Green dots)
+    svgC.selectAll("circle.scatter-true").data(data).join("circle")
+      .attr("cx", d => scaleCx(d.trueVal + m1))
+      .attr("cy", d => scaleCy(d.outcome))
+      .attr("r", 4)
+      .attr("fill", colorOkabeGreen)
+      .attr("stroke", colorDotStroke)
+      .attr("stroke-width", 1)
+      .attr("opacity", 0.5);
+
+    // Plot generated outcome data for k=1 (Light Blue -> Vermillion dots)
+    svgC.selectAll("circle.scatter-c").data(data).join("circle")
+      .attr("cx", d => scaleCx(d.y1))
+      .attr("cy", d => scaleCy(d.outcome))
+      .attr("r", 4)
+      .attr("fill", colorOkabeVermillion)
+      .attr("stroke", colorDotStroke)
+      .attr("stroke-width", 1)
+      .attr("opacity", 0.7);
+
+    // Theoretical True Relationship (Beta = 0.5) passing through the mean
+    svgC.append("line")
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + trueBeta * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + trueBeta * (maxVal - meanY1)))
+      .attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
+
+    // Flattened Observed Relationship (Beta = True Beta * ICC, for k=1) passing through the mean
+    svgC.append("line")
+      .attr("x1", scaleCx(-maxVal)).attr("y1", scaleCy(meanOutcome + obsBeta * (-maxVal - meanY1)))
+      .attr("x2", scaleCx(maxVal)).attr("y2", scaleCy(meanOutcome + obsBeta * (maxVal - meanY1)))
+      .attr("stroke", colorOkabeVermillion).attr("stroke-dasharray", "6,4").attr("stroke-width", 2.5);
+
+    svgC.append("text").attr("transform", "rotate(-90)").attr("x", -heightC/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Outcome (unitless)");
+    svgC.append("text").attr("x", widthC/2).attr("y", heightC - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Observed exposure 1 (k = 1)");
+    svgC.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("C");
+
+    // Dynamic Legend for Plot C
+    const legendC = svgC.append("g").attr("transform", `translate(${margin.left + 15}, ${margin.top + 10})`);
+    
+    legendC.append("rect")
+      .attr("x", -5).attr("y", -5).attr("width", 190).attr("height", 44)
+      .attr("fill", "rgba(255, 255, 255, 0.9)").attr("stroke", "#dee2e6").attr("rx", 4);
+      
+    // True Beta Legend Group
+    legendC.append("circle").attr("cx", 15).attr("cy", 8).attr("r", 4).attr("fill", colorOkabeGreen).attr("opacity", 0.5);
+    legendC.append("line").attr("x1", 5).attr("y1", 8).attr("x2", 25).attr("y2", 8).attr("stroke", colorOkabeGreen).attr("stroke-width", 2.5);
+    legendC.append("text").attr("x", 35).attr("y", 12).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`True data & fit (\u03B2 = ${trueBeta.toFixed(2)})`);
+    
+    // Observed Beta Legend Group
+    legendC.append("circle").attr("cx", 15).attr("cy", 26).attr("r", 4).attr("fill", colorOkabeVermillion).attr("opacity", 0.7);
+    legendC.append("line").attr("x1", 5).attr("y1", 26).attr("x2", 25).attr("y2", 26).attr("stroke", colorOkabeVermillion).attr("stroke-width", 2.5).attr("stroke-dasharray", "6,4");
+    legendC.append("text").attr("x", 35).attr("y", 30).attr("font-size", "11px").attr("fill", colorAxisText).attr("font-weight", "600").text(`Obs. data & fit (\u03B2 = ${obsBeta.toFixed(2)})`);
+
+    // --- Draw Plot D (Spearman-Brown) ---
+    const widthD = cardD.node().getBoundingClientRect().width || 400;
+    const heightD = 320;
+    svgD.attr("viewBox", `0 0 ${widthD} ${heightD}`);
+    svgD.selectAll("*").remove();
+
+    const scaleDx = d3.scaleLinear().domain([1, 10]).range([margin.left, widthD - margin.right]);
+    const scaleDy = d3.scaleLinear().domain([0, 1.1]).range([heightD - margin.bottom, margin.top]);
+
+    svgD.append("g").attr("transform", `translate(0,${heightD - margin.bottom})`).call(d3.axisBottom(scaleDx).ticks(10).tickSize(-heightD + margin.top + margin.bottom).tickFormat("")).attr("color", colorGridLine).lower();
+    svgD.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleDy).ticks(5).tickSize(-widthD + margin.left + margin.right).tickFormat("")).attr("color", colorGridLine).lower();
+    svgD.append("g").attr("transform", `translate(0,${heightD - margin.bottom})`).call(d3.axisBottom(scaleDx).ticks(10).tickFormat(d3.format("d"))).attr("color", colorAxisText);
+    svgD.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(scaleDy).ticks(5)).attr("color", colorAxisText);
+
+    const lambda = varWithin / Math.max(0.000001, varBetween); 
+    const kData = d3.range(1, 11).map(k => ({ k: k, att: 1 / (1 + lambda / k) }));
+
+    const lineGen = d3.line()
+      .x(d => scaleDx(d.k))
+      .y(d => scaleDy(d.att));
+
+    // Draw Attenuation Curve
+    svgD.append("path")
+      .datum(kData)
+      .attr("fill", "none")
+      .attr("stroke", colorOkabeBlue)
+      .attr("stroke-width", 2)
+      .attr("d", lineGen);
+      
+    // Draw dots for each K measure, highlighting K=1
+    svgD.selectAll("circle.k-pt").data(kData).join("circle")
+      .attr("cx", d => scaleDx(d.k)).attr("cy", d => scaleDy(d.att))
+      .attr("r", d => d.k === 1 ? 6 : 4) // Slightly larger radius for k=1
+      .attr("fill", d => d.k === 1 ? colorOkabeVermillion : colorLightBlue) // Match Vermillion color of Observed Beta
+      .attr("stroke", colorDotStroke).attr("stroke-width", 1).attr("opacity", 1);
+
+    // Perfect recovery line reference at 1.0
+    svgD.append("line")
+      .attr("x1", scaleDx(1)).attr("y1", scaleDy(1))
+      .attr("x2", scaleDx(10)).attr("y2", scaleDy(1))
+      .attr("stroke", "#dc3545").attr("stroke-dasharray", "4").attr("stroke-opacity", 0.5);
+
+    svgD.append("text").attr("transform", "rotate(-90)").attr("x", -heightD/2).attr("y", 12).attr("text-anchor", "middle").attr("class", "axis-label").text("Attenuation Factor");
+    svgD.append("text").attr("x", widthD/2).attr("y", heightD - 5).attr("text-anchor", "middle").attr("class", "axis-label").text("Measurements averaged (k)");
+    svgD.append("text").attr("x", 10).attr("y", 20).attr("font-weight", "bold").attr("font-size", "14px").text("D");
+
+    // Label for the highlighted k=1 dot
+    svgD.append("text")
+      .attr("x", scaleDx(1) + 12)
+      .attr("y", scaleDy(kData[0].att) + 4)
+      .attr("font-size", "11px")
+      .attr("font-weight", "bold")
+      .attr("fill", colorOkabeVermillion)
+      .text("k = 1");
+  }
+
+  // --- 5. Event Listeners ---
+  Object.values(sliders).forEach(s => s.slider.on("input", update));
+  
+  const observer = new ResizeObserver(() => { update(); });
+  observer.observe(plotsDiv.node());
+
+  update();
+  return container.node();
+}
+```
+:::
+
+::: {.callout-note title="Take-aways"}
+A systematic difference between $X_1$ and $X_2$ causes a lower ICC, but not a lower Pearson correlation coefficient: in plot B, high ICC values have points scattered along the identity line, while high Pearson correlation coefficients only need points closely scattered around a linear fit. Moreover, we see that there are diminishing returns of multiple samples.
+::: 
+
+If we partition the variance in our study into a within-person part (e.g. how much do circulating cholesterol levels differ from their long-term person-specific average) and a between-person part (e.g. how much do long-term average circulating cholesterol levels differ between persons), we can contrast the two and calculate an ICC. The ICC is the fraction of total variation attributable to genuine between-person differences; it's the ratio of the 'true' variance to total observed variance. As variances are always positive, it ranges from 0 to 1. The ICC is also interpretable as the expected correlation between two measurements from the same person. If we can't know the true long-term average, the next best thing is knowing how well we can tell Person A apart from Person B -- and the ICC can tell us that.
+
+::: {.callout-important title="Scope"}
+The tool has four panels:
+
+- **Panel A** is a dumbbell plot ordered by the means of the subjects and intends to illustrate how our ability to discern between the means of subjects using a single measurement diminishes with lower ICC;
+- **Panel B** plots each of the measurements of a subject against each other in a scatter plot: if the measurements fall on the identity line they are the same on both occasions and are in perfect agreement with each other;
+- **Panel C** shows us the attenuation of the slope in linear regression if the ICC is smaller than 1;
+- **Panel D** illustrates how taking multiple samples improves the attenuation. 
+
+The tool only illustrates measurement error in the exposure of a (univariable) regression model. The effects of measurement error in outcomes are different (e.g. no bias towards the null but less precise estimates) but will not be discussed here. Moreover, we only cover non-differential measurement error, and only cover continuous exposures; for categorical, see Cohen's/Fleiss' kappa.
+:::  
+
+To give you some anchors: body mass index in the UK Biobank has an ICC of 0.9 over 53 months while height has an ICC close to 1 (@rutterExploringRegressionDilution2023). This does not come as a surprise: a person's weight can change over four years, but does not change considerably for most people; and height barely changes at all after early adulthood. Moreover, both variables also differ considerably between individuals. This combination of high between-person variation and low within-person variation makes for a high ICC. In contrast, the usual levels of a biomarker with a short half-life and infrequent exposure will likely be poorly reflected and result in a low ICC: between any two measurement occasions, a person's levels may change dramatically, not because their exposure pattern has changed, but simply because of moment-to-moment variation.
+
+# Validity vs reliability, and why you should care about ICCs
+Ideally, to quantify the amount of measurement error we compare our measurement to a 'true' measurement or a gold standard. This would be a validity study. However, for many exposures relevant to studying the link between environment and health, this is infeasible: environmental exposures fluctuate continuously, personal monitoring devices capable of capturing this variation are costly, and the _true_ internal biological dose often requires invasive tissue biopsies. Often, the best we can do then is assume that the 'true' measurement is the average over time, obtain multiple, temporally separated measurements (over the period that is etiologically thought to be relevant) and compare them. In epidemiology, we would call this a reliability (of the mean) study. Fortunately, the long-term average is also the measure thought to be of most relevance to the epidemiology of chronic diseases.[^14] Establishing how reflective our snapshot is of long-term averages is then crucial because if we assume that this average relates to health, we can only detect such a relationship insofar as our snapshot relates to this long-term average.
+
+[^14]: The rationale typically invoked is that chronic disease pathogenesis develops cumulatively over years, making integrated exposure over the etiologically relevant window -- rather than transient fluctuations -- the construct of interest [@keogh2020stratos; @pleilHumanBiomarkerInterpretation2018; @nMolecularEpidemiologyPrinciples]. Conditional on the same follow-up length, the average is directly proportional to this cumulative exposure. Note, however, that cumulative exposure is not always relevant; depending on the mechanism, peak exposure, time above a threshold, or time-weighted averages (e.g. critical windows) may be the relevant summary metric [@Kriebel2010]. The popularity of the cumulative exposure summary is not only borne out of ease, but also because it tends to give a robust answer to the existence of an association, regardless of the underlying true mechanism of disease [@devochtRethinkingCumulativeExposure2015].
+
+# Estimating the ICC from reliability studies
+Now, let's look at some real data. This is untargeted liquid chromatography high-resolution mass spectrometry (LC-HRMS) data from the EXPOsOMICS study, which we made [openly available](https://zenodo.org/record/8156759). Such data contains intensity measurements for hundreds of biomarkers per person per occasion. Crucially, blood samples from most subjects were collected on two separate occasions, approximately 100 days apart, and were then analyzed simultaneously. Subjects were recruited from four centers: Utrecht, Turin, Basel, and Norwich. 
+
+We can directly download the data from our Zenodo repository:
+
+```{r}
+#| code-fold: true
+fetch_and_read <- function(url, reader_func, needs_file = FALSE, ...) {
+  curl::curl_fetch_memory(url) |>
+    (\(x) {
+      if (needs_file) {
+        tmp <- tempfile(fileext = tools::file_ext(url) |> paste0(".", x = _))
+        writeBin(x$content, tmp)
+        reader_func(tmp, ...)
+      } else {
+        reader_func(x$content, ...)
+      }
+    })()
+}
+
+annotations <- fetch_and_read(
+  "https://zenodo.org/record/8156759/files/annotations.xlsx?download=1",
+  readxl::read_xlsx,
+  needs_file = TRUE
+) |>
+  tidyr::unite(
+    feature_string,
+    c(mass, retention_time),
+    sep = '_',
+    remove = FALSE
+  ) |>
+  dplyr::mutate(
+    feature_string = paste("X", feature_string, sep = ""),
+    curated_name = tolower(curated_name)
+  )
+
+lc_data <- fetch_and_read(
+  "https://zenodo.org/record/8156759/files/processed_lcms_data.csv?download=1",
+  readr::read_csv
+) |>
+  dplyr::select(
+    !tidyselect::starts_with("X"),
+    tidyselect::all_of(annotations[['feature_string']])
+  ) |>
+  dplyr::add_count(subjectid, name = "n_obs")
+
+perc_nondetects <- lc_data |>
+  dplyr::summarise(across(
+    tidyselect::starts_with("X"),
+    ~ mean(.x == 1, na.rm = TRUE) * 100
+  )) |>
+  tidyr::pivot_longer(
+    tidyselect::everything(),
+    names_to = 'feature_string',
+    values_to = "perc_nondetects"
+  ) |>
+  dplyr::mutate(all_detects = perc_nondetects == 0)
+
+annotations <- annotations |>
+  dplyr::full_join(perc_nondetects) |>
+  dplyr::mutate(
+    curated_name = forcats::fct_recode(
+      as.factor(curated_name),
+      "cholesterol" = "cholesterol - h2o"
+    )
+  )
+```
+
+Using an ANOVA model we can partition the variance[^negative-variance] into a between- and within-person part:
+
+[^negative-variance]: In small substudies, MS_within may exceed MS_between and the formula gives a negative variance estimate. 
+
+```{r}
+#| code-fold: false
+cholesterol <- lc_data |>
+  dplyr::select(
+    !tidyselect::starts_with("X"),
+    dplyr::all_of(with(
+      subset(annotations, curated_name == "cholesterol"),
+      setNames(feature_string, curated_name)
+    ))
+  )
+
+get_icc_anova <- function(m) {
+  stats <- summary(m)[[1]]
+
+  MS_between <- stats["subjectid", "Mean Sq"]
+  MS_within <- stats["Residuals", "Mean Sq"]
+
+  var_within <- MS_within
+
+  # in anova, MS_between includes both the true between-subject variance AND within-subject noise.
+  # expected MS_between = var_within + (k * var_between), where k is measurements per subject.
+  # to isolate pure var_between, we subtract MS_within and divide by k (here, k = 2)
+  var_between <- (MS_between - MS_within) / 2
+
+  var_between / (var_between + var_within)
+}
+
+stats::aov(
+  log(cholesterol) ~ subjectid,
+  data = cholesterol |> dplyr::filter(n_obs == 2)
+) |>
+  get_icc_anova()
+```
+
+If we use a random intercept model we can also fit such a model on unbalanced data where not everyone has multiple measurements:
+
+```{r}
+#| code-fold: false
+get_icc_lmer <- function(m) {
+  vc <- lme4::VarCorr(m)
+  var_between <- as.numeric(vc[[1]])
+  var_residual <- attr(vc, "sc")^2
+  var_between / (var_between + var_residual)
+}
+
+lme4::lmer(log(cholesterol) ~ 1 + (1 | subjectid), data = cholesterol) |>
+  get_icc_lmer()
+```
+
+Note that the ICC will be the same as the ANOVA model (bar some optimizer differences) if you fit it on the same data:
+
+```{r}
+#| code-fold: false
+lme4::lmer(
+  log(cholesterol) ~ 1 + (1 | subjectid),
+  data = subset(cholesterol, n_obs == 2)
+) |>
+  get_icc_lmer()
+```
+
+The random intercept models are super flexible, and allow you to easily add crossed effects (for example if you also have different raters or different batches (also a different rater really)), or specify a three-level model when some of the variation between subjects is better described as variation between subjects in different countries.[^40] You can then decide to include these other variance components in the (de)nominator of your ICC calculation or not depending on whether you consider it as nuisance variance. 
+
+::: {.callout-note title="Adjusted and consistency ICCs"}
+Agreement ICCs measure the agreement in absolute  measurements, while consistency ICCs measure the agreement in relative measurements, (i.e. adjusted for the difference in means between the measurement occasions). Adjusted ICCs are used when we want to adjust for (both fixed and random) other factors (e.g. batch effects in biomarker assays). Adjusted ICCs can be interpreted as the ICC given that the level of that factor is known. This implicitly assumes that the ICC is constant for all values of this factor. Conditional ICCs, on the other hand, change with levels of a factor and give you an estimate of the ICC at a certain value of a fixed factor (@nakagawaRepeatabilityGaussianNonGaussian2010).
+
+Predictors linked to individual measurements -- such as sampling time of day -- typically increase ICC estimates by reducing residual (within-subject) variance. In contrast, predictors that (mostly) vary between individuals -- such as smoking status -- tend to decrease both agreement and adjusted repeatability, as they absorb between-subject variance that would otherwise contribute to the numerator in the ICC calculation (@gelman2007data).
+:::
+
+[^40]: You can even add a random slope, but it gets very [complicated](https://stats.stackexchange.com/questions/115526/intraclass-correlation-coefficient-in-mixed-model-with-random-slopes/318418#318418) then as the variance depends on at what value you evaluate the random slope. 
+
+We can also fit a Bayesian model and thereby get the uncertainty on the ICC parameters for free (also notice how fast `brms` and `STAN` are here):
+
+```{r}
+#| code-fold: false
+m <- brms::brm(
+  log(cholesterol) ~ 1 + (1 | subjectid),
+  data = cholesterol,
+  silent = TRUE,
+  cores = 4,
+  refresh = 2000,
+  backend = 'cmdstanr'
+)
+
+icc_draws <- brms::as_draws_df(m) |>
+  posterior::mutate_variables(
+    icc = sd_subjectid__Intercept^2 /
+      (sd_subjectid__Intercept^2 + sigma^2)
+  ) |>
+  posterior::subset_draws(
+    variable = c("icc", "sd_subjectid__Intercept", "sigma")
+  )
+
+posterior::summarise_draws(
+  icc_draws,
+  "mean",
+  "median",
+  "sd",
+  "mad",
+  ~ quantile(.x, probs = c(0.025, 0.975)),
+  "rhat",
+  "ess_bulk",
+  "ess_tail"
+)
+```
+
+Moreover, `brms` allows us to easily specify the [left-censoring of nondetects that are common to biological assays](/blog/left-censored-models-showcase/index.qmd) such that we do not need to impute and pool the variances across imputations and instead can directly obtain an estimate of the variances.
+
+# Ratio of these variance components
+Besides taking the proportion of variance that is between subjects, we can also take the ratio of within- to between-subject variance. @gelman2007data [pp. 258-259] offer an interesting information theory perspective on this ratio. Namely, it quantifies the information content of the population distribution in terms of actual samples. Specifically, the value represents the number of observations you would need from a single subject (i.e., class) to match the information already provided by the population prior.[^1]
+
+For example, if within-subject variance is two times the between-subject variance (within-subject variance is 2, between-subject variance is 1, for an ICC of 0.33), there is technically more information about a subject's true mean in the global mean than in that subject's own data if a subject has fewer than 2 observations. In other words, if you had to guess a subject's true mean, you would do better to use the population mean than the single observation you had on that subject. Conversely, with an ICC of 0.2 you would need 4 observations on a subject to match the information from the global mean!
+
+[^1]: This calculation is derived from equating the precision (inverse variance) of the population prior with that of the sample mean. From an information theory perspective, the standard deviation quantifies uncertainty -- meaning a narrower distribution (higher precision) contains more information. By setting the standard deviation of the between-subject distribution ($\sigma_{\text{between}}$) equal to the standard error of the within-subject sample mean ($\sigma_{\text{within}}/\sqrt{n}$), we identify the point where the prior and the data provide equivalent information. Solving for $n$ yields the variance ratio $n = \sigma^2_{\text{within}} / \sigma^2_{\text{between}}$. This value represents the "equivalent sample size" of the prior. Practically, this defines the tipping point for partial pooling: below this threshold, the multilevel model shrinks estimates toward the global mean; above it, the specific subject's data dominates.
+
+Interestingly, some earlier writings on exposure variability in environmental and occupational epidemiology (e.g. @loomisExposureVariabilityConcepts2004) calculated this ratio instead of the ICC. Looking more into it, it seems that this is used sometimes in biostatistics. 
+
+::: {.callout-important title="Assumptions for a valid ICC"}
+Estimating an ICC and successfully partitioning variance relies on the classical measurement error model and standard linear mixed model (LMM) frameworks. We assume the following for valid and relevant ICCs:
+
+**[Methodological assumptions]{.underline}:**
+
+- **Exchangeability of replicates:** The repeated measurements per subject must be interchangeable draws from the same underlying within-subject distribution over the etiologically relevant time window. They should share the same expected mean and variance. 
+- **No carry-over effects:** The act of taking the first measurement must not influence the 'true' value or biological state of the second measurement. 
+- **Representativeness:** the study sample used to calculate the ICC should relect the population that we are interested in, because reliability is highly dependent on the distribution of the variable under study in the population.
+
+**[Statistical assumptions]{.underline}:**
+
+- **Independence of errors:** The random within-subject deviations must be uncorrelated with the subject's true long-term average exposure.
+- **Homoscedasticity (Constant Variance):** The within-subject variance ($\sigma^2_{\text{within}}$) must be constant across all subjects and across the entire exposure range. Because biological fluctuations are typically multiplicative (variance scales with the mean), log-transforming the data is usually required to make the error additive and stabilize the variance.
+- **Normality:** Standard ANOVA and random intercept models assume that both the true between-subject means and the within-subject residual errors follow a normal distribution. 
+:::
+
+# All equations
+Validity: $\rho_{XT}$
+
+Reliability: $R_{XX} = \operatorname{Corr}\left(x_{ij}^*, x_{ij'}^*\right) = ICC_1 = \frac{\sigma^2_\text{between}}{\sigma^2_\text{between} + \sigma^2_\text{within}}$
+
+$\rho_{XT} = \sqrt{R_{XX}}$ (or $\rho_{XT}^2 = R_{XX}$ sometimes also written as $\rho^2_{\text{validity}}$).
+
+Reliability of the mean of $k$ measurements:
+$$ICC_k = \frac{\sigma^2_\text{between}}{\sigma^2_\text{between}+ \frac{\sigma^2_\text{within}}{k}}$$
+
+The other often used formulas are simply (somewhat involved) derivations from these core formulas. 
+
+## Derived equations
+If you know your ICC (from e.g. a pilot study) and want to know how many repeated measurements you need to reach a desired validity, you can rearrange the formula to solve for $k$ (Spearman-Brown or Fleiss-Shrout are often credited with this):
+
+$$k = \frac{\rho_{XT}^2 \cdot (1 - ICC_1)}{ICC_1 \cdot (1 - \rho_{XT}^2)}$$
+
+or calculate by how much the regression slope is attenuated/flattened by measurement error (attenuation factor). For a single measurement:
+
+$$\beta^* = \beta \times ICC_1$$
+
+If we take the average of our $k$ measurements per individual, we get: 
+$$\beta^* = \frac{\beta}{1 + \lambda/k}$$
+
+where $\lambda$ is the variance ratio ($\lambda = \sigma^2_{\text{within}} / \sigma^2_{\text{between}}$). Note that $\frac{1}{1 + \lambda/k}$ is just an algebraic rearrangement of $ICC_k$ (the reliability of the average of $k$ measurements).[^book_mistake]
+
+It's important to note that these formulas assume a univariable model, and a classical measurement error structure. When there are multiple variables with classical measurement error, it gets more complicated and simulations can be needed to infer such metrics.
+
+The impact on logistic regression analyses can be approximated using $OR_{obs} = OR_{true}^{ICC}$ (@nMolecularEpidemiologyPrinciples), but simulations seem to be preferred (@burstynImprovingDesignEpidemiology2026). 
+
+[^book_mistake]: @nMolecularEpidemiologyPrinciples [pp. 164] is missing $1 + $ in denominator, it should be (following their notation) $E(\beta) = \frac{\beta_i}{1 + \frac{\sigma_{ws}^2}{\sigma_{bs}^2}}$.
+
+In practice, it's probably best to rely on existing calculators -- which brings us to our next section.
+
+# Planning studies
+@burstynImprovingDesignEpidemiology2026 created a set of easy-to-use [web-based tools](https://scipinion.com/resources/) that can estimate required sample sizes, number of repeated measurements, and the expected power and bias of studies when we assume classical measurement error. They also offer a tool that helps to optimally balance between increasing $N$ and $k$ on a fixed budget, using the variance components estimated from your pilot data as input. 
+
+More sophisticated tools also exist. For example, @vernerHowManyUrine2020 developed a [tool](https://www.magnoliasci.com/brat) to help optimize exposure assessment for urine based on pharmacokinetic modeling simulations of oral routes of exposure. It's based on a simple pharmacokinetic model that simulates exposure, internal levels, and resulting urinary concentrations in individuals from a population. The user can alter the exposure pattern, the within- and between-person variability in exposure levels, exposure period prior to urine sampling, biological half-life and even the between-person variability therein. The software comes as stand-alone Windows application.
+
+## Physical pooling
+Increasing the number of samples per subjects thus improves our exposure assessment. It's, however, also very expensive to assay all of these additional samples. For that reason, we sometimes physically pool study samples per subject prior to analyzing them with an assay such that the added cost of repeated sampling is mainly related to sample collection. This pooling is quite common for urine (e.g. @vernetEmpiricalValidationWithinsubject2019), but for blood and serum sample collection is usually considered too costly and the idea is that measurements in blood reflect a longer past period than urine anyway.[^pooling-case-control] 
+
+[^pooling-case-control]: Pooling can also be performed within randomly grouped sets of cases and within randomly grouped sets of controls, saving considerable time and money while retaining statistical power under assumptions such as arithmetic mean estimation (@weinbergUsingPooledExposure1999). Such pooled exposure assessment may also offer privacy advantages which are an increasingly important consideration given the legal burden of data transfers. Pooling even alleviates nondetect problems when the proportion of nondetects is low to moderate because the pooled sample naturally regresses towards the mean and shrinks the extremes, but pooling worsens these problems when that proportion is large. Moreover, any measurement error inherent to the assay itself (such as matrix effects) is amplified in pooled studies. Secondary analysis of such case-control pooled data seems much harder though.
+
+## Reliability (sub)study
+When obtaining multiple samples on all subjects is infeasible, some studies fall back on a reliability substudy where we only collect repeated samples for a subset of the subjects.[^12] This allows us to adjust our effect estimates for the attenuation, and importantly, gives us information on the extent of the measurement error. Ideally, these persons are fully representative of the parent epidemiologic study because this guarantees transportability of the ICC (@spiegelmanApproachesUncertaintyExposure2010).[^transport-sigmaw] However, this can be hard in practice when we, for example, use archived samples from multiple cohorts, as not all cohorts may have repeated samples (over the same time period) available. Don't forget that the substudy itself needs enough subjects to precisely estimate the ICC: with 25 subjects the 95% CI can easily span half the [0,1] range (as visible in the interactive tool), and even with 298 samples from 157 subjects in our EXPOsOMICS study the 95% CI still spans [0.61, 0.78] -- and this uncertainty will grow with a greater number of nondetects.
+
+[^12]: Also called a replicate study or reproducibility study.
+
+[^transport-sigmaw]: Transporting the full ICC requires the substudy's between-subject variance to match the parent study's. Transporting only the within-subject variance $\sigma^2_{\text{within}}$ needs the weaker assumption that the measurement-error process is comparable; you can then combine it with the parent study's total variance to obtain a cohort-specific ICC.
+
+# Correcting for measurement error
+Using a reliability study, we can obtain more accurate effect estimates by adjusting our effect estimates for the measurement error. However, such correction will not -- perhaps surprisingly -- improve our statistical power. Namely, testing $H_0: \beta_{x}^{*} = 0$ is a valid test of $H_0: \beta_{x} = 0$ all along! 
+Because $\beta_{x}^* = 0 \iff \beta_{x} = 0$ (since $\beta_{x}^* = \beta_{x} \times ICC_1$) the unadjusted test preserves the nominal significance level in a simple univariable setting. In fact, correction for measurement error will likely result in larger standard errors (e.g. see example @keogh2020stratos). So there's (again) no free lunch unfortunately: obtaining more accurate exposure estimates or increasing sample size (through both $N$ and $k$) is the only way the statistical power can be improved. 
+
+If your goal is prediction -- instead of causal inference -- you probably do not want to correct for measurement error at all. This is because the realized measurement is an error-free measurement of itself (@Carroll2006). Correction is only necessary if the settings differ causing the naive prediction model to not be transportable across deployment settings. 
+
+## Divide by attenuation factor
+Let's start with the simplest correction: just divide your effect estimate by the reliability coefficient -- and divide its standard error by the same factor. Doing so still ignores the uncertainty in the reliability coefficient itself, meaning the resulting standard errors will be underestimated -- more sophisticated methods address this. The simple division method is the single-covariate linear special case of regression calibration.
+
+## Regression calibration
+The core idea of regression calibration is to build a regression model to estimate the attenuation factor and generate predicted values of the "true" exposure that you can plug into your main outcome model.
+
+To generate predicted values of the true exposure, we do not -- perhaps counterintuitively -- simply average our measurements (even though we mentioned before that we assume the expected value of the within-subject measurements is their "true" long-term average). Simply averaging falls short for two reasons: it would not fully eliminate attenuation bias for subjects with $k > 1$ (see panel D in the interactive tool!), and for single-measurement subjects (typically the bulk of the cohort) the "average" is just that one measurement and retains the full within-subject error variance.[^empirical-mean]
+
+Instead, we regress $X_2^*$ on $X_1^*$. Because the random errors in the two measurements are independent, their covariance perfectly isolates the true biological variance. As a result, the slope of this calibration regression is exactly the attenuation factor.[^20][^21] Once we fit this model in our reliability subset (often also incorporating other covariates), we can generate predicted "true" values for the entire study cohort, even for subjects who only provided a single measurement.[^calibration-k] To obtain correct standard errors, we can use techniques like bootstrapping to account for the uncertainty in the entire two-step calibration and estimation process.
+
+[^20]: You might wonder about symmetry: wouldn't regressing $X_1^*$ on $X_2^*$ give a different slope? In a true reliability study, we assume the measurements are interchangeable with the exact same total and error variances, meaning the theoretical slope is identical either way. In practice, with finite samples, the two slopes will differ somewhat.
+
+[^21]: Why not use the variance partition model to calculate the attenuation factor here too? I think we could, but mixed models are (computationally) harder to fit. Though variance partition (possibly mixed) models seem the better choice for regression calibration to me if your repeated measures data is unbalanced or if you have more than two measurements in your reliability study.
+
+[^calibration-k]: Strictly speaking, the simple calibration slope above only applies cleanly to subjects with a single measurement. For subjects with $k > 1$ measurements, the optimal calibration uses their mean with a slope based on $ICC_k$ rather than $ICC_1$. A mixed model handles this weighting automatically through its random-effect predictions (BLUPs).
+
+[^empirical-mean]: A subject's empirical mean of $k$ measurements still carries within-subject error variance $\sigma^2_{\text{within}} / k$; for $k = 1$ that is the full $\sigma^2_{\text{within}}$. Regression calibration improves on this by shrinking each subject's predicted "true" value toward the population mean, with more shrinkage when $\sigma^2_{\text{within}}$ is large relative to $\sigma^2_{\text{between}}$ (i.e. when the individual's data is less informative).
+
+## Simulation Extrapolation (SIMEX)
+The fundamental concept behind SIMEX is to deliberately inject additional error into a variable that already contains measurement error. As a prerequisite, we first use a substudy to calculate the amount of measurement error already there (to know how much error to add, we first have to know how much is already there). The procedure itself then has two phases, which give it its name. In the simulation phase, we systematically inject increasing amounts of simulated error into our data. We then run our regression model to see exactly how this increasing error variance impacts our parameter estimates. In the extrapolation phase, we model the trend of how the estimates behave as error increases and project the trend backward. This allows us to estimate the true parameters as if the error variance were zero!
+
+See e.g. @keogh2020stratos and @shawSTRATOSGuidanceDocument2020 for more types of error correction models like elegant Bayesian approaches or approaches more applicable to other complicated settings (e.g. multiple variables with measurement error). 
+
+# Common misconceptions about the ICC
+I have seen reviewers write that a molecule predictive of disease years later must be "relatively stable [over time]". This, of course, need not be the case: if this predictive molecule reflects an exogenous source and this source is increasingly prevalent in the environment, levels of the molecule would have increased over time and because of different means between possible measurement occasions this would result in a low ICC.[^biomarker-exposure] Similarly, I have seen reviewers be surprised when molecules with a long half-life like PFAS had a low ICC -- this is very much possible when the mean exposure increases over time or if the relative exposure pattern between people changes. This is one of the rationales for why some (e.g. @liljequistIntraclassCorrelationDiscussion2019) recommend both reporting the agreement and consistency ICC.[^dominance] In addition, reporting all variance components aids in interpretation and is recommended [@nakagawaUnderstandingDifferentTypes2025].
+
+[^biomarker-exposure]: Biomarkers of exogenous origin indicate more than just exposure though. For exposures that are ubiquitous (and have long half lives like PFAS) the differences in biomarker intensity levels between persons may largely reflect differences in toxicokinetics rather than exposure itself (@savitz2018invited, @braun2018re). 
+
+[^dominance]: If you want to attribute variance explained across multiple predictors (e.g. which fixed effects contribute most to a model's $R^2$), [a dominance analysis using e.g. `parameters::dominance_analysis()`](https://easystats.github.io/parameters/reference/dominance_analysis.html) can be helpful.
+
+ICC values for biomarkers are frequently reported and sometimes almost taken as an inherent property of a biomarker and its interaction with human biology. They are not however. Rather, an ICC is "a property of the test applied using a particular [study] protocol to a specific population" (@nMolecularEpidemiologyPrinciples). It follows that the ICC in your own study will depend on your population and protocol, and may differ substantially from published estimates. So what generalizable information does a high ICC in a study convey? It tells us that the measurement performed reliably under those specific conditions, and that a high ICC is achievable -- but that need not necessarily be always the case; moving from a multi-country to a single-country study likely reduces exposure contrast between subjects; restricting the age range narrows between-subject variability; shifting away from a sharp environmental point source limits between-subject contrast; inconsistent protocol standardization inflates within-subject error. Each of these changes the ICC. Applying an ICC estimate from one study to another therefore hinges on its transportability.
+
+# Bonus
+<details>
+<summary><strong>Show</strong></summary>
+
+## Bland-Altman plots
+ICCs are mainly useful for designing and interpreting epidemiological studies. They are less useful for judging whether your measurement is useful for clinical interpretation as you can also obtain a high ICC value when the within-subject variability is very large if your between-subject variability is even larger (measurement error of this magnitude can be clinically unacceptable). In other words, an ICC is not ideal for clinical settings, because the resulting reliability of the instrument then depends on the variability in the population. A [Bland-Altman plot](https://en.wikipedia.org/wiki/Bland%E2%80%93Altman_plot) is a better device to test this. Such a plot shows the difference between two measurements against their average, and thereby provides a clear visual assessment of the actual magnitude of error and limits of agreement. This allows you to more easily determine if the discrepancies are clinically acceptable independent of the population's overall variance.
+
+## Where the ICC comes from: Fisher's intraclass correlation (or how to calculate an ICC using Pearson)
+Fisher originally defined the intraclass correlation by contrasting it with the ordinary interclass (Pearson) correlation between two distinct variables. In a class, however, measurements are interchangeable and not necessarily distinct categories: there is no natural $X_1$ and $X_2$. Fisher devised a trick that calculates an ICC by making this symmetry explicit. Correlating $X_1$ against $X_2$ directly would give the ordinary interclass (Pearson) correlation; instead, when we include every within-subject pair twice, once as $(X_1, X_2)$ and once as $(X_2, X_1)$, the Pearson correlation becomes the intraclass correlation: both columns now share one mean and variance, so it equals the agreement ICC we defined in the equations section.[^fisher-via]
+
+The code below demonstrates the trick; the result matches the ICC we computed earlier, up to a small ML-vs-REML difference in the variance estimators.
+
+```{r}
+#| code-fold: false
+cholesterol |>
+  dplyr::filter(n_obs == 2) |>
+  tidyr::pivot_wider(
+    id_cols = subjectid,
+    names_from = sample_code,
+    values_from = cholesterol
+  ) |>
+  # create the two "views" of the data: have every pair be included twice, in both orders
+  (\(d) {
+    dplyr::bind_rows(
+      d |> dplyr::select(x = A, y = B),
+      d |> dplyr::select(x = B, y = A)
+    )
+  })() |>
+  # calculate correlation on the now-doubled dataset
+  dplyr::summarise(icc = cor(log(x), log(y))) |>
+  dplyr::pull()
+```
+
+[^fisher-via]: Via Wolfgang Viechtbauer's [great answer](https://stats.stackexchange.com/a/213619) on Cross Validated, who notes it goes back to Fisher.
+
+## ICCs in other fields
+Other fields also work with ICCs -- the concept is very broad and is known under various names across fields.
+
+### Biology
+Ecology and evolutionary biology call it repeatability ($R$) and use it for trait consistency and "animal personality" [@nakagawaRepeatabilityGaussianNonGaussian2010]. One of its most prolific authors, Nakagawa, also wrote extension papers useful well beyond biology -- ICCs from (G)LMMs and the `rptR` package [@stoffelRptRRepeatabilityEstimation2017], and a recent guide to the different ICC variants [@nakagawaUnderstandingDifferentTypes2025].
+
+### Quantitative genetics
+In quantitative genetics, broad-sense heritability ($H^2$) is formally equivalent to an ICC. It quantifies the proportion of phenotypic variance in a population that is attributable to genetic differences between individuals. By treating sets of genetically identical individuals (e.g. monozygotic twins) as clusters, geneticists apply the same variance-partitioning logic. The between-cluster variance here captures the combined effect of genetics and shared environment, while within-twin differences reflect the non-shared environment alongside any classical measurement error. To separate genetics from shared environment, more advanced models like ACE are required, which contrast MZ with dizygotic twins.
+
+### Psychometrics
+Psychometrics is the source of the (horrible) ICC(1,1)/ICC(2,1)/ICC(3,1) taxonomy (our agreement ICC is their ICC(1,1) or ICC(2,1) depending on the study design)[^icc-taxonomy] and the agreement-vs-consistency split we used earlier [@shroutIntraclassCorrelationsUses1979, @mcgraw_forming_1996]. Psychologists seem to apply ICCs most often to inter-rater and what they call test-retest reliability.
+
+[^icc-taxonomy]: The first number denotes the model and the second is $k$, the number of measurements per subject. ICC(1,1) is a one-way random-effects model with exchangeable replicates; ICC(2,1) is a two-way random-effects model with raters/occasions as a random effect (absolute agreement, penalizes systematic occasion differences); ICC(3,1) is a two-way mixed model with raters/occasions as fixed effects (consistency, adjusts them out). With exchangeable replicates, ICC(1,1) and ICC(2,1) coincide.
+
+### Trials
+Cluster-randomised trials use the intracluster correlation coefficient (ICC) to measure how similar observations within the same cluster are. Because clustered observations are not fully independent, the ICC informs a sample size inflation factor -- the more correlated observations are within clusters, the larger the sample size needed to maintain statistical power.
+
+</details>
+
+## Further reading on measurement in epidemiology
+
+### General
+- *STRATOS guidance document on measurement error and misclassification of variables in observational epidemiology: Part 1—Basic theory and simple methods of adjustment* [@keogh2020stratos]
+- *STRATOS guidance document on measurement error and misclassification of variables in observational epidemiology: Part 2—More complex methods of adjustment and advanced topics* [@shawSTRATOSGuidanceDocument2020]
+- *Reflection on modern methods: five myths about measurement error in epidemiological research* [@vansmedenReflectionModernMethods2020]
+- *The Strategy of Preventive Medicine* [@Rose1992]
+- *Measurement Error in Nonlinear Models: A Modern Perspective* [@Carroll2006]
+- *Measurement Error and Misclassification in Statistics and Epidemiology: Impacts and Bayesian Adjustments* [@Gustafson2003]
+- *Measurement in Medicine: A Practical Guide* [@de2011measurement]
+
+### Environmental epidemiology
+- *Principles of Exposure Measurement in Epidemiology* [@Armstrong1992]
+- *A Biologic Approach to Environmental Assessment and Epidemiology* [@Kriebel2010]
+
+### Molecular epidemiology
+- *Molecular Epidemiology: Principles and Practices* [@nMolecularEpidemiologyPrinciples]
