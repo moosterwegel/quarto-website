@@ -238,3 +238,104 @@ p, li {
 div.quarto-about-solana {
   padding-top: 0.5em !important;
 }
+
+// ===== "Key findings" callout =====================================
+// A categorised TL;DR card, kept deliberately restrained (Tufte) on a
+// curated palette (Wes Anderson): warm paper ground, navy ink for ALL
+// text, and a SINGLE accent -- the post's Zissou teal #78B7C5 -- carried
+// by the rail and the bullet dots. The header keeps its slot (the title
+// sits where "Note" used to) with the icon removed. Custom dot bullets
+// and tight spacing fix the default loose list, which wraps each bullet
+// in a <p> with big margins.
+.callout.key-findings {
+  margin: 0.25rem 0 0.5rem;
+  border: 1px solid #e9e3d7;
+  border-left: 5px solid #78B7C5; // Zissou teal — the one accent
+  border-radius: 6px;
+  background: #faf8f3; // warm paper
+  box-shadow: 0 1px 3px rgba(29, 50, 62, 0.05);
+  padding: 0;
+
+  // header: drop the default note tint + pencil icon, keep the title slot.
+  // line-height tames the default leading that was bloating the header band
+  // (that, not the body padding, was the real source of the big top gap).
+  .callout-header {
+    background: transparent !important;
+    border-bottom: 1px solid #ece6da;
+    padding: 0.5rem 1.5rem 0.3rem;
+    line-height: 1.15;
+    opacity: 1;
+  }
+
+  .callout-icon-container {
+    display: none;
+  }
+
+  .callout-title-container {
+    font-family: "Atkinson Hyperlegible";
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #1D323E;
+  }
+
+  .callout-body-container {
+    padding: 0.25rem 1.5rem 0.35rem;
+    > *:last-child,
+    p:last-child {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  .kf-section {
+    margin-bottom: 0.1rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    // category label (the bold line at the top of each section)
+    > p:first-child {
+      margin: 0 0 0.25rem;
+      font-family: "Atkinson Hyperlegible";
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1D323E; // navy ink — set apart by weight/font, not a 2nd colour
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1rem;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+      margin: 0.18rem 0;
+      line-height: 1.45;
+      text-align: left;
+      hyphens: none;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: -0.85rem;
+        top: 0.62em;
+        width: 5px;
+        height: 5px;
+        background: #78B7C5; // the one accent, echoed from the rail
+        border-radius: 50%;
+      }
+
+      // kill the loose-list <p> margins that caused the big vertical gaps
+      p {
+        margin: 0;
+      }
+
+      strong {
+        color: #1D323E;
+        font-weight: 700;
+      }
+    }
+  }
+}

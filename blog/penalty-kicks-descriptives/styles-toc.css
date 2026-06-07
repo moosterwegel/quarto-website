@@ -1,0 +1,52 @@
+/* Penalty-descriptives post only.
+
+   This is the one page on the site with a margin table of contents. The site
+   is otherwise a single, viewport-centred 700px column, and the navbar/footer
+   are centred in the viewport to match it.
+
+   Quarto's default (non-fullcontent) page grid reserves a TOC column on the
+   RIGHT but nothing equivalent on the LEFT, so the article column is pushed
+   ~half a TOC-width left of the viewport centre. The viewport-centred navbar
+   then sits to the right of the article -- the "navbar jumped right" effect.
+
+   Fix: mirror the right-hand TOC margin with an equal column on the left, so
+   the article re-centres in the viewport (and lines up with the navbar/footer)
+   while the TOC keeps its own right-hand column.
+
+   This must hit EVERY .page-columns grid, not just the outer #quarto-content
+   one: the page nests grids (outer holds the TOC; main + each section are
+   their own grids that actually position the paragraphs). Re-centring only the
+   outer grid just shoves the TOC further right and leaves the body where it
+   was -- it has to be applied to all of them so body and TOC stay aligned.
+
+   The body-content track must be the full 700px -- the same width as the
+   navbar/footer/container -- NOT calc(700px - 3rem). Centring a narrower
+   column still leaves its left edge inset from the 700px-centred navbar (by
+   ~24px with the 3rem subtracted), which is the residual shift that made the
+   two look misaligned even after the article was "centred".
+
+   Only needed >=768px; at <=767.98px Quarto collapses to a single column and
+   the article is centred again on its own, so we leave that alone.
+
+   The added left margin is minmax(0px, ...) (not a fixed min like the TOC's):
+   it grows to mirror the TOC on wide screens (so the body centres) but
+   collapses on narrower screens, where there isn't room for two full margins,
+   to avoid horizontal overflow. So: centred on desktop, graceful below. */
+@media (min-width: 768px) {
+  .page-columns {
+    grid-template-columns:
+      [screen-start] 1.5rem
+      [screen-start-inset] 5fr
+      [page-start] 42px
+      [page-start-inset] minmax(0px, 174px)
+      [body-start-outset] 42px
+      [body-start] 1.5rem
+      [body-content-start] minmax(500px, 700px)
+      [body-content-end] 1.5rem
+      [body-end] 42px
+      [body-end-outset] minmax(90px, 174px)
+      [page-end-inset] 42px
+      [page-end] 5fr
+      [screen-end-inset] 1.5rem [screen-end] !important;
+  }
+}

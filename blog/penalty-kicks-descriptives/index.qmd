@@ -1,0 +1,2272 @@
+---
+title: "Everything you've (n)ever wanted to know about penalty kicks: descriptives"
+date: "2026-06-07"
+format:
+  html:
+    code-fold: true
+    fig-format: svg
+    fig-dpi: 300
+    toc: true
+    toc-depth: 1
+    css: styles-toc.css
+---
+Club football is done, and the sporting world's attention turns to the 2026 FIFA World Cup -- where, inevitably, some team's fate will come down to twelve yards, a taker's nerves, and a goalkeeper's guess. Penalty shootouts inspire more clichés than almost anything else in sport. But what does the data say? Today we start with some basic descriptives.
+
+::: {.callout-note .key-findings title="At a glance"}
+::: {.kf-section}
+**The basics**
+
+- Men's Leagues: **77.0%** of penalties are scored, 17.0% are saved, 3.2% completely miss the target, and 2.9% hit the post. The conversion rate in the Women's game is lower (**71.4%**), and this seems largely driven by a higher percentage of misses. Small sample caveats apply though.
+- Unlike golf's "loss aversion," players do not seem to perform considerably better when shooting from a one-goal deficit (**77.2%** conversion) compared to when the score is tied (77.0%). When teams are winning by one goal, the conversion rate is higher (78.4%), but this can also be explained by e.g. better players on stronger teams being more likely to lead.
+- Most players take low single digit penalties in their career.
+- The number of penalties at World Cups has **increased** since the introduction of the Video Assisted Referee (VAR).  
+:::
+
+::: {.kf-section}
+**Placement & footedness**
+
+- Left- and right-footed players share almost identical shooting patterns once you adjust for their "dominant side" -- the preference for one's strong side is universal.
+- Approx. **11%** of kicks go down the middle. 
+- Takers generally place the ball to their dominant side about **49-50%** of the time during standard play. However, in high-pressure shootouts, players lean into their dominant side more heavily, pushing that preference up to **52.9%**.
+- Career classified rookie takers seem to lean on their dominant side more (**53.2%** vs ≈50% for veterans), though differences narrow with experience.
+:::
+
+::: {.kf-section}
+**The goalkeeper**
+
+- Goalkeepers commit to a side **97.2%** of the time and go to the correct side on **44%** of penalties. Even then they save only **35%** of those -- roughly **15%** of all penalties, which is most of the **17%** keepers save overall (the rest come on wrong-way dives).
+:::
+
+::: {.kf-section}
+**Shootouts**
+
+- Going first wins the shootout only **51.9%** of the time -- the first-mover advantage is minimal.
+- Shootout conversion (**74.3%**) is ~3 points lower than in-play penalties; part of this seems to be explained by weaker takers stepping up.
+- Players subbed on in minute 120+ purely for the shootout convert at just **70.9%**, suggesting "cold" takers underperform.
+- In the past three World Cups, roughly **1 in 4 matches** were decided by a shootout.
+- If you miss the first kick, your chances drop to **27.8%**.
+:::
+
+::: {.kf-section}
+**The aftermath**
+
+- About **1 in 2** of saved penalties can produce a dangerous rebound.
+
+::: {style="margin-top: 10px;"}
+While data and knowledge about the specific behaviours of penalty takers and goalkeepers might yield a slight edge in the short term, mutual awareness of these patterns means the sport will inevitably adapt and shift toward a new game theory equilibrium. Meaning that, practically speaking, all this is mostly just for our own amusement and curiosity!
+:::
+:::
+
+:::
+
+# Dataset
+## What data do we have?
+::: {.column-page}
+```{r}
+#| fig-height: 8
+#| fig-width: 14
+#| out-width: "100%"
+#| message: false
+#| warning: false
+library(tidyverse)
+library(wesanderson)
+library(patchwork)
+library(gt)
+library(gtExtras)
+source("functions_features.R")
+source("functions_plotting.R")
+
+# Shared gt theme so every table matches the blog's typography and palette
+# (header in the heading navy #1D323E, IBM Plex fonts, subtle striping, and
+# tabular/monospaced figures so numeric columns line up).
+gt_theme_penalties <- function(gt_tbl) {
+  out <- gt_tbl |>
+    gt::opt_table_font(font = "IBM Plex Sans") |>
+    gt::tab_options(
+      table.width = gt::pct(100),
+      table.font.size = gt::px(14),
+      table.border.top.style = "none",
+      table.border.bottom.color = "#d9dee1",
+      heading.align = "left",
+      heading.title.font.size = gt::px(15),
+      heading.subtitle.font.size = gt::px(12.5),
+      column_labels.background.color = "#1D323E",
+      column_labels.font.weight = "bold",
+      column_labels.font.size = gt::px(12.5),
+      column_labels.border.bottom.style = "none",
+      row.striping.background_color = "#f3f5f6",
+      table_body.hlines.style = "none",
+      table_body.border.bottom.color = "#d9dee1",
+      data_row.padding = gt::px(6),
+      source_notes.font.size = gt::px(11),
+      source_notes.padding = gt::px(6)
+    ) |>
+    gt::opt_row_striping() |>
+    gt::tab_style(
+      style = gt::cell_text(color = "white"),
+      locations = gt::cells_column_labels()
+    ) |>
+    gt::tab_style(
+      style = gt::cell_text(font = "IBM Plex Mono"),
+      locations = gt::cells_body(columns = dplyr::where(is.numeric))
+    )
+
+  # When a table has a spanner, the top header row is otherwise a navy "blob"
+  # identical to the column labels below it. Give it a distinct, lighter look
+  # (pale fill, dark normal-weight italic text) so the two header rows read as
+  # caption-over-labels rather than one solid band. Guarded for spanner-less
+  # tables, since this theme is applied to all of them.
+  if (nrow(out[["_spanners"]]) > 0) {
+    out <- out |>
+      gt::tab_style(
+        style = list(
+          gt::cell_fill(color = "#eef2f4"),
+          gt::cell_text(color = "#1D323E", weight = "normal", style = "italic", size = gt::px(11))
+        ),
+        locations = gt::cells_column_spanners()
+      )
+  }
+  out
+}
+
+# Readable labels for the compact categorical codes used across the tables.
+position_labels <- c(
+  G = "Goalkeeper",
+  D = "Defender",
+  M = "Midfielder",
+  A = "Attacking midfielder",
+  F = "Forward",
+  Sub = "Substitute"
+)
+label_position <- function(x) {
+  dplyr::coalesce(unname(position_labels[as.character(x)]), as.character(x))
+}
+
+# Split camelCase foul codes and sentence-case them: "AerialFoul" -> "Aerial foul"
+label_foul <- function(x) {
+  x |>
+    as.character() |>
+    stringr::str_replace_all("(?<=[a-z])(?=[A-Z])", " ") |>
+    stringr::str_to_sentence()
+}
+
+# "losing_3_plus" -> "Losing 3+", "equal" -> "Equal", "winning_1" -> "Winning 1"
+label_game_state <- function(x) {
+  x |>
+    as.character() |>
+    stringr::str_replace("_plus", "+") |>
+    stringr::str_replace_all("_", " ") |>
+    stringr::str_to_sentence()
+}
+
+# Shared builder for the placement (shot-zone-dominance) tables. Each row is a
+# group (game state, phase, position, experience...) and the three columns
+# Dominant/Centre/Non-dominant are that group's placement split, which always
+# sums to 100%. Every one of these tables asks a *comparative* question -- "does
+# the strong-side preference change ACROSS groups?" -- so the colour highlights
+# differences DOWN each column, not the trivial within-row fact that the dominant
+# side is biggest. Each zone column is shaded on a diverging scale centred on its
+# own median (the "typical" group), reusing the doc's difference-plot palette
+# (GrandBudapest2: pink = below typical, periwinkle = above). Centring on the
+# median keeps a small, tiny-n outlier group from hijacking the whole scale.
+placement_gradient_table <- function(data, group, group_label) {
+  wide <- data |>
+    dplyr::filter(!is.na(shot_zone_dominance)) |>
+    dplyr::select(rowcat = {{ group }}, shot_zone_dominance, prop, prop_n_string) |>
+    tidyr::pivot_wider(
+      names_from = shot_zone_dominance,
+      values_from = c(prop_n_string, prop)
+    ) |>
+    dplyr::rename(
+      Dominant = prop_n_string_Dominant,
+      Centre = prop_n_string_Centre,
+      Non_dominant = prop_n_string_Non_dominant
+    ) |>
+    dplyr::relocate(Dominant, Centre, Non_dominant, .after = rowcat)
+
+  tbl <- wide |>
+    gt::gt() |>
+    gt::tab_spanner(
+      label = "Shot placement (share of penalties, n)",
+      columns = c(Dominant, Centre, Non_dominant)
+    ) |>
+    gt::cols_label(
+      rowcat = group_label,
+      Dominant = "Dominant side",
+      Centre = "Centre",
+      Non_dominant = "Non-dominant side"
+    )
+
+  # Diverging shading, one column at a time: each zone centred on its own median
+  # and scaled symmetrically to that column's largest deviation from it.
+  for (z in c("Dominant", "Centre", "Non_dominant")) {
+    pcol <- paste0("prop_", z)
+    vals <- wide[[pcol]]
+    med <- median(vals, na.rm = TRUE)
+    spread <- max(abs(vals - med), na.rm = TRUE)
+    if (is.finite(spread) && spread > 0) {
+      tbl <- tbl |>
+        gt::data_color(
+          columns = dplyr::all_of(pcol),
+          target_columns = dplyr::all_of(z),
+          palette = c("#E6A0C4", "#F7F7F5", "#7294D4"),
+          domain = c(med - spread, med + spread),
+          na_color = "white"
+        )
+    }
+  }
+
+  source_note <- paste(
+    "Cell colour compares groups down each column:",
+    "periwinkle = leans on that zone more than the typical (median) group,",
+    "pink = less. Read the share itself from the cell."
+  )
+
+  tbl |>
+    gt::cols_hide(c(prop_Dominant, prop_Centre, prop_Non_dominant)) |>
+    gt::sub_missing(missing_text = "–") |>
+    gt::tab_source_note(source_note) |>
+    gt_theme_penalties()
+}
+
+df <- nanoparquet::read_parquet(
+  "data/penalties_all_seasons.parquet"
+) |>
+  convert_opta_to_meters() |>
+  add_features()
+
+df_male <- df |> dplyr::filter(!is_female_league)
+
+lighten <- function(color, amount = 0.55) {
+  v <- col2rgb(color) / 255
+  rgb(
+    v[1] + (1 - v[1]) * amount,
+    v[2] + (1 - v[2]) * amount,
+    v[3] + (1 - v[3]) * amount
+  )
+}
+
+# One base color per subgroup, shades generated within
+base_colors <- c(
+  "Men top 5 league" = "#046C9A", # Darjeeling2 navy
+  "Men non top level league" = "#78B7C5", # Zissou sky blue (same family, lower tier)
+  "Men other European league" = "#00A08A", # Darjeeling1 teal-green
+  "Men league outside Europe" = "#D8B70A", # Cavalcanti gold
+  "Men cup" = "#F98400", # Darjeeling1 orange
+  "Men international club" = "#C93312", # Darjeeling2 brick red
+  "Men international country" = "#9986A5", # IsleofDogs purple-gray
+  "Women league" = "#F4B5BD", # Moonrise3 blush
+  "Women international country" = "#7294D4" # GrandBudapest2 periwinkle
+)
+
+treemap_data <- df |>
+  dplyr::group_by(is_female_league, competition_type_detailed, competition, season) |>
+  dplyr::tally() |>
+  dplyr::ungroup() |>
+  dplyr::summarise(
+    n = sum(n),
+    season_min = min(season),
+    season_max = max(season),
+    .by = c(is_female_league, competition_type_detailed, competition)
+  ) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    label = paste0(
+      stringr::str_replace(competition, "-", "\n"),
+      "\n",
+      season_min,
+      "\u2013",
+      season_max,
+      "\n",
+      n,
+      " (",
+      scales::percent(prop, accuracy = 0.1),
+      ")"
+    ),
+    gender = dplyr::if_else(is_female_league, "Women", "Men"),
+    subgroup = paste(gender, competition_type_detailed),
+    comp_id = paste(gender, competition)
+  ) |>
+  dplyr::arrange(subgroup, dplyr::desc(n)) |>
+  dplyr::mutate(rank_in_subgroup = dplyr::row_number(), .by = subgroup) |>
+  dplyr::group_by(subgroup) |>
+  dplyr::mutate(
+    fill_color = colorRampPalette(
+      c(base_colors[subgroup[1]], lighten(base_colors[subgroup[1]]))
+    )(dplyr::n())[rank_in_subgroup]
+  ) |>
+  dplyr::ungroup()
+
+treemap_data |>
+  ggplot2::ggplot(ggplot2::aes(area = n, fill = comp_id, label = label, subgroup = subgroup)) +
+  treemapify::geom_treemap() +
+  treemapify::geom_treemap_subgroup_border(color = "white", size = 3) +
+  treemapify::geom_treemap_subgroup_text(
+    color = "white",
+    alpha = 0.5,
+    fontface = "bold",
+    place = "topleft",
+    grow = FALSE,
+    size = 10
+  ) +
+  treemapify::geom_treemap_text(
+    color = "white",
+    place = "centre",
+    grow = FALSE,
+    reflow = TRUE,
+    min.size = 6
+  ) +
+  ggplot2::scale_fill_manual(
+    values = setNames(treemap_data$fill_color, treemap_data$comp_id),
+    guide = "none"
+  )
+
+n_total <- nrow(df)
+n_shootouts <- df_male |> dplyr::filter(is_shootout) |> dplyr::distinct(match_id) |> nrow()
+n_shootout_pens <- df_male |> dplyr::filter(is_shootout) |> nrow()
+
+shootout_type_counts <- df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::count(competition_type_detailed) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  { \(d) split(d, d$competition_type_detailed) }()
+
+fmt_shootout_share <- function(type) {
+  row <- shootout_type_counts[[type]]
+  if (is.null(row)) return("0 (0.0%)")
+  paste0(
+    format(row$n, big.mark = ","),
+    " (",
+    scales::percent(row$prop, accuracy = 0.1),
+    ")"
+  )
+}
+```
+:::
+
+From the `r n_total` penalties included in the dataset, `r n_shootout_pens` are from shootouts[^shootout-men] (`r n_shootouts` shootouts total). Of these shootout penalties, `r fmt_shootout_share("cup")` come from cup competitions, `r fmt_shootout_share("international country")` from international country competitions, and `r fmt_shootout_share("international club")` from international club competitions.[^1]
+
+[^1]: For questions related to shootouts where only high-level data is sufficient, e.g. who wins, who scores etc., other data sources (e.g. Transfermarkt) will provide better coverage. Recently, I also obtained that data so an update might follow.
+
+[^shootout-men]: The `r n_total` total spans men's and women's competitions, but these shootout counts -- like every shootout analysis later in this post -- cover men's competitions only. The `r df |> dplyr::filter(is_female_league, is_shootout) |> nrow()` women's shootout penalties in the data are left out here, as that sample is too small for reliable breakdowns.
+
+For each of these `r n_total` penalty kicks we have information on shot placement, what side the goalkeeper went, and contextual information like how many touches they took, what the score was etcetera.[^10]
+
+[^10]: You can cobble together your own dataset by following the instructions from the README in [this Github repository](https://github.com/moosterwegel/whoscored-opta-events-scraper).
+
+## How many penalties were there in the last three World Cups?
+```{r}
+past_wcs <- df_male  |> 
+  filter(season %in% c("2014", "2018", "2022"), competition == "INT-World Cup") 
+
+past_wcs_global_stats <- past_wcs |> 
+  group_by(season, is_shootout)  |> 
+  tally()
+
+nr_shootouts <- past_wcs |> 
+  group_by(season, is_shootout)  |> distinct(match_id)  |> tally()
+
+nr_matches <- 64
+nr_knockout_matches <- 16
+```
+
+The 2014 World Cup (pre-VAR) saw `r sum(past_wcs_global_stats$n[past_wcs_global_stats$season == "2014"])` penalties (`r sum(past_wcs_global_stats$n[past_wcs_global_stats$season == "2014" & past_wcs_global_stats$is_shootout])` from shootouts). The two VAR-era World Cups (2018 and 2022) averaged `r sum(past_wcs_global_stats$n[past_wcs_global_stats$season %in% c("2018", "2022")]) / 2` penalties (`r sum(past_wcs_global_stats$n[past_wcs_global_stats$season %in% c("2018", "2022") & past_wcs_global_stats$is_shootout]) / 2` from shootouts) with a non-shootout penalty every `r scales::number(nr_matches / (sum(past_wcs_global_stats$n[past_wcs_global_stats$season %in% c("2018", "2022") & !past_wcs_global_stats$is_shootout]) / 2), accuracy = 0.01)` match on average.
+
+From the `r nr_knockout_matches * 3` knockout matches across the three tournaments, `r sum(nr_shootouts$n[nr_shootouts$is_shootout])` were decided by a shootout (so roughly 1 in `r round((nr_knockout_matches * 3) / sum(nr_shootouts$n[nr_shootouts$is_shootout]))` ends in a shootout). The 2026 World Cup will feature 48 countries and will have an additional round of knockouts (for 32 knockout matches total). However, I don't believe this will end in more knockout matches as the quality difference between teams will be larger on average.
+
+## How many penalty kicks do players take in this 17y dataset (i.e. distribution of penalties)?
+```{r}
+pen_counts <- df |>
+  dplyr::group_by(taker_id, taker_name) |>
+  dplyr::count()
+
+q25 <- quantile(pen_counts$n, 0.25)
+q75 <- quantile(pen_counts$n, 0.75)
+outliers <- pen_counts |> dplyr::filter(n > q75 + 1.5 * (q75 - q25))
+labeled <- pen_counts |> dplyr::filter(n > 65)
+
+x_breaks <- seq(0, ceiling(max(pen_counts$n) / 25) * 25, by = 25)
+
+p_hist <- pen_counts |>
+  ggplot2::ggplot(ggplot2::aes(n)) +
+  ggplot2::geom_histogram(
+    binwidth = 5,
+    fill = "gray30",
+    color = "white",
+    linewidth = 0.2
+  ) +
+  ggplot2::scale_x_continuous(breaks = x_breaks) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+  ggplot2::labs(x = NULL, y = "Number of players") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_blank()
+  )
+
+p_box <- pen_counts |>
+  ggplot2::ggplot(ggplot2::aes(x = n, y = 0)) +
+  ggplot2::geom_boxplot(
+    width = 0.5,
+    outlier.shape = NA,
+    fill = "gray85",
+    color = "gray30",
+    linewidth = 0.4
+  ) +
+  ggplot2::geom_point(data = outliers, size = 1.5, color = "gray30", alpha = 0.8) +
+  ggrepel::geom_text_repel(
+    data = labeled,
+    ggplot2::aes(label = taker_name),
+    size = 3.5,
+    direction = "both",
+    nudge_y = 0.35,
+    force = 6,
+    force_pull = 0.3,
+    box.padding = 0.4,
+    point.padding = 0.2,
+    segment.size = 0.3,
+    segment.color = "gray50",
+    segment.curvature = -0.1,
+    arrow = grid::arrow(length = grid::unit(0.006, "npc"), type = "closed"),
+    min.segment.length = 0.1,
+    max.overlaps = Inf,
+    seed = 42
+  ) +
+  ggplot2::scale_x_continuous(breaks = x_breaks) +
+  ggplot2::coord_cartesian(ylim = c(-0.4, 1.6)) +
+  ggplot2::labs(x = "Penalties taken per player (17-season span)", y = NULL) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.y = ggplot2::element_blank(),
+    axis.text.y = ggplot2::element_blank(),
+    axis.ticks.y = ggplot2::element_blank()
+  )
+
+patchwork::wrap_plots(p_hist, p_box, ncol = 1, heights = c(4, 1.9))
+```
+
+So even among the players who have taken a penalty in this dataset, most have taken only `r pen_counts  |> dplyr::group_by(n)  |> dplyr::tally()  |> dplyr::summarize(mode = max(nn))  |> dplyr::pull(mode)`.
+
+## And what proportion of players takes a penalty?
+```{r}
+starting_lineups <- nanoparquet::read_parquet(
+  "data/lineups_all_seasons.parquet"
+) |>  filter(is_first_eleven)
+
+starting_player_ids <- starting_lineups |>
+  dplyr::distinct(player_id) |>
+  dplyr::pull(player_id)
+
+taker_ids <- df |>
+  dplyr::distinct(taker_id) |>
+  dplyr::pull(taker_id)
+
+n_starters <- length(starting_player_ids)
+n_starters_who_took <- sum(starting_player_ids %in% taker_ids)
+prop_starters_who_took <- n_starters_who_took / n_starters
+```
+
+Of the `r format(n_starters, big.mark = ",")` distinct players who appeared in a starting eleven in this dataset, `r format(n_starters_who_took, big.mark = ",")` (`r scales::percent(prop_starters_who_took, accuracy = 0.1)`) took at least one penalty in the dataset.
+
+```{r}
+regular_starter_ids <- starting_lineups |>
+  dplyr::distinct(player_id, match_id) |>
+  dplyr::count(player_id) |>
+  dplyr::filter(n >= 100) |>
+  dplyr::pull(player_id)
+
+n_regular_starters <- length(regular_starter_ids)
+n_regular_starters_who_took <- sum(regular_starter_ids %in% taker_ids)
+prop_regular_starters_who_took <- n_regular_starters_who_took / n_regular_starters
+```
+
+If we restrict to the `r format(n_regular_starters, big.mark = ",")` players who started in at least 100 matches: `r format(n_regular_starters_who_took, big.mark = ",")` (`r scales::percent(prop_regular_starters_who_took, accuracy = 0.1)`) took at least one penalty in the dataset. In reality, this number is higher because this dataset only covers a limited number of (international) cup competitions.
+
+## How many penalties do goalkeepers face in this 17y dataset?
+```{r}
+gk_counts <- df |>
+  dplyr::group_by(gk_id, gk_name) |>
+  dplyr::count()
+
+q25_gk <- quantile(gk_counts$n, 0.25)
+q75_gk <- quantile(gk_counts$n, 0.75)
+outliers_gk <- gk_counts |> dplyr::filter(n > q75_gk + 1.5 * (q75_gk - q25_gk))
+labeled_gk <- gk_counts |> dplyr::filter(n > 85)
+
+x_breaks_gk <- seq(0, ceiling(max(gk_counts$n) / 25) * 25, by = 25)
+
+p_hist_gk <- gk_counts |>
+  ggplot2::ggplot(ggplot2::aes(n)) +
+  ggplot2::geom_histogram(binwidth = 5, fill = "gray30", color = "white", linewidth = 0.2) +
+  ggplot2::scale_x_continuous(breaks = x_breaks_gk) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+  ggplot2::coord_cartesian(xlim = c(0, max(x_breaks_gk))) +
+  ggplot2::labs(x = NULL, y = "Number of goalkeepers") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_blank()
+  )
+
+p_box_gk <- gk_counts |>
+  ggplot2::ggplot(ggplot2::aes(x = n, y = 0)) +
+  ggplot2::geom_boxplot(
+    width = 0.5, outlier.shape = NA,
+    fill = "gray85", color = "gray30", linewidth = 0.4
+  ) +
+  ggplot2::geom_point(data = outliers_gk, size = 1.5, color = "gray30", alpha = 0.8) +
+  ggrepel::geom_text_repel(
+    data = labeled_gk,
+    ggplot2::aes(label = gk_name),
+    size = 3.5,
+    direction = "both",
+    nudge_y = 0.7,
+    force = 10,
+    force_pull = 0.2,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.3,
+    segment.color = "gray50",
+    segment.curvature = -0.1,
+    arrow = grid::arrow(length = grid::unit(0.006, "npc"), type = "closed"),
+    min.segment.length = 0.1,
+    max.overlaps = Inf,
+    seed = 42
+  ) +
+  ggplot2::scale_x_continuous(breaks = x_breaks_gk) +
+  ggplot2::coord_cartesian(xlim = c(0, max(x_breaks_gk)), ylim = c(-0.4, 2.2)) +
+  ggplot2::labs(x = "Penalties faced per goalkeeper (17-season span)", y = NULL) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.y = ggplot2::element_blank(),
+    axis.text.y = ggplot2::element_blank(),
+    axis.ticks.y = ggplot2::element_blank()
+  )
+
+patchwork::wrap_plots(p_hist_gk, p_box_gk, ncol = 1, heights = c(4, 2.6))
+```
+
+# Conversion and outcomes
+## What proportion of penalty kicks are on goal?
+```{r}
+df_male |>
+  dplyr::count(outcome) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::arrange(dplyr::desc(n)) |>
+  gt::gt() |>
+  gt::cols_label(outcome = "Outcome", n = "Penalties", prop = "Share") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt_theme_penalties()
+```
+
+Only `r scales::percent(mean(df_male$outcome == "Missed"), accuracy = 0.1)` of penalties miss the target entirely -- keepers almost always have something to save.
+
+## What proportion of penalty kicks are scored [male vs female]?
+```{r}
+df |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = is_female_league) |>
+  dplyr::transmute(
+    league = dplyr::if_else(is_female_league, "Women", "Men"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(league = "League", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt_theme_penalties()
+```
+
+Penalty kicks in Women's leagues are scored at a lower rate! This is surprising to me, because the popular critique of Women's football is that the keepers are worse. Are the penalties saved at a higher rate or missed at a higher rate?
+
+```{r}
+df |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_saved), .by = is_female_league) |>
+  dplyr::transmute(
+    league = dplyr::if_else(is_female_league, "Women", "Men"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(league = "League", n = "Penalties", prop = "Save rate") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 2) |>
+  gt_theme_penalties()
+```
+
+A post-shot expected penalty goal model would give a more comprehensive picture here, accounting for shot quality. Part of the story (insofar as there is one) seems to be that women penalty takers just miss the goal more often. 
+
+```{r}
+df |>
+  dplyr::mutate(league = dplyr::if_else(is_female_league, "Women", "Men")) |>
+  dplyr::count(league, outcome) |>
+  dplyr::mutate(
+    cell = paste0(
+      scales::percent(n / sum(n), accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = league
+  ) |>
+  dplyr::select(outcome, league, cell) |>
+  tidyr::pivot_wider(names_from = league, values_from = cell) |>
+  gt::gt() |>
+  gt::cols_label(outcome = "Outcome") |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+The data I have available on Women's leagues is very small (n = `r df  |> dplyr::filter(is_female_league)  |> nrow()`), so I'm not comfortable running further stratified analyses; all other parts of this post will cover male leagues only.
+
+## Do different game states have different success rates?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = score_diff_taking_team_coarse) |>
+  dplyr::transmute(state = label_game_state(score_diff_taking_team_coarse), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(state = "Game state (taking team)", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+Based on this rudimentary descriptive information, we do not see the loss-aversion effect documented in golf, where players perform best when putting for par (equivalent to trailing by 1 here).
+
+## On what positions do penalty takers play?
+```{r}
+df_male |>
+  dplyr::filter(!is.na(taker_position_binned)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = taker_position_binned) |>
+  dplyr::arrange(dplyr::desc(prop)) |>
+  dplyr::transmute(position = label_position(taker_position_binned), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(position = "Position (on the day)", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+```{r}
+df_male |>
+  dplyr::filter(!is.na(most_common_start_position_binned)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = most_common_start_position_binned) |>
+  dplyr::arrange(dplyr::desc(prop)) |>
+  dplyr::transmute(position = label_position(most_common_start_position_binned), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(position = "Usual position", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+A taker's usual position barely moves the needle -- just `r df_male |> dplyr::filter(most_common_start_position_binned %in% c("F", "D")) |> dplyr::summarise(p = mean(is_goal), .by = most_common_start_position_binned) |> dplyr::summarise(g = abs(diff(p))) |> dplyr::pull(g) |> scales::percent(accuracy = 0.1)` separates forwards from defenders. Goalkeepers who step up seem to be slightly better than the average penalty taker, though the sample is small.
+
+# Placement
+## What side do goalkeepers dive?
+```{r}
+df_male |>
+  dplyr::filter(!is.na(gk_action)) |> 
+  dplyr::count(gk_action) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::arrange(dplyr::desc(n)) |>
+  gt::gt() |>
+  gt::cols_label(gk_action = "Keeper went", n = "Penalties", prop = "Share") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt_theme_penalties()
+```
+
+Goalkeepers almost always commit to a side -- they stay put only `r df_male |> dplyr::filter(!is.na(gk_action)) |> dplyr::summarise(p = mean(gk_action == "Standing")) |> dplyr::pull(p) |> scales::percent(accuracy = 0.1)` of the time.
+
+## What side do goalkeepers dive stratified by taker's foot?
+```{r}
+df_male |>
+  dplyr::filter(!is.na(gk_action), !is.na(kick_foot)) |>
+  dplyr::count(kick_foot, gk_action) |>
+  dplyr::mutate(
+    cell = paste0(
+      scales::percent(n / sum(n), accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = kick_foot
+  ) |>
+  dplyr::select(gk_action, kick_foot, cell) |>
+  tidyr::pivot_wider(names_from = kick_foot, values_from = cell) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Taker's kicking foot", columns = c(Left, Right)) |>
+  gt::cols_label(gk_action = "Keeper went") |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+## How often do goalkeepers dive to the correct side?
+```{r}
+gk_correct_rate <- df_male |>
+  dplyr::count(gk_correct) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::filter(gk_correct) |>
+  dplyr::pull(prop)
+```
+
+On `r scales::percent(gk_correct_rate, accuracy = 0.1)` of penalties, the goalkeeper goes the correct way.
+
+## Where do players shoot?
+
+::: {.panel-tabset}
+
+### Binned
+
+```{r}
+#| fig-height: 10
+#| fig-width: 7
+#| fig-align: center
+#| fig-format: png
+#| fig-dpi: 300
+
+pal_density <- wesanderson::wes_palette("Zissou1Continuous", 100, type = "continuous")
+pal_diff <- wesanderson::wes_palette("GrandBudapest2")
+
+df_left <- df_male |> dplyr::filter(kick_foot == "Left")
+df_right <- df_male |> dplyr::filter(kick_foot == "Right")
+
+df_left_mirrored <- df_left |>
+  dplyr::mutate(shot_x_meters = -shot_x_meters)
+
+bin_shots <- function(data, height_splits = NULL) {
+  total_n <- nrow(data)
+
+  # only bin shots within the goal frame
+  on_frame <- data |>
+    dplyr::filter(
+      shot_x_meters >= post_left,
+      shot_x_meters <= post_right,
+      shot_y_meters >= 0,
+      shot_y_meters <= crossbar_height
+    )
+
+  x_breaks <- c(-Inf, dive_zone_left_offset, dive_zone_right_offset, Inf)
+  x_labels <- c("Left", "Centre", "Right")
+
+  if (!is.null(height_splits)) {
+    y_breaks <- c(-Inf, height_splits, Inf)
+    y_labels <- paste0("H", seq_along(y_breaks) - 1)[1:(length(y_breaks) - 1)]
+  } else {
+    y_breaks <- c(-Inf, Inf)
+    y_labels <- "All"
+  }
+
+  on_frame |>
+    dplyr::mutate(
+      x_bin = cut(shot_x_meters, breaks = x_breaks, labels = x_labels),
+      y_bin = cut(shot_y_meters, breaks = y_breaks, labels = y_labels)
+    ) |>
+    dplyr::count(x_bin, y_bin, .drop = FALSE) |>
+    dplyr::mutate(prop = n / total_n)
+}
+
+binned_left <- bin_shots(df_left)
+binned_right <- bin_shots(df_right)
+binned_left_mirrored <- bin_shots(df_left_mirrored)
+
+# x/y positions for the centre of each bin (for geom_tile / geom_text)
+bin_x_centres <- c(
+  "Left" = (post_left + dive_zone_left_offset) / 2,
+  "Centre" = 0,
+  "Right" = (dive_zone_right_offset + post_right) / 2
+)
+
+bin_y_centre <- crossbar_height / 2
+bin_height <- crossbar_height
+
+add_positions <- function(binned) {
+  binned |>
+    dplyr::mutate(
+      x_centre = bin_x_centres[as.character(x_bin)],
+      y_centre = bin_y_centre,
+      bin_width = dplyr::case_when(
+        x_bin == "Left" ~ dive_zone_left_offset - post_left,
+        x_bin == "Centre" ~ dive_zone_right_offset - dive_zone_left_offset,
+        x_bin == "Right" ~ post_right - dive_zone_right_offset
+      ),
+      bin_height = bin_height
+    )
+}
+
+binned_left <- add_positions(binned_left)
+binned_right <- add_positions(binned_right)
+binned_left_mirrored <- add_positions(binned_left_mirrored)
+
+max_prop <- max(binned_left$prop, binned_right$prop, binned_left_mirrored$prop)
+
+n_left <- nrow(df_left)
+n_right <- nrow(df_right)
+
+bin_plot <- function(binned, title) {
+  ggplot2::ggplot(binned) +
+    ggplot2::geom_tile(
+      ggplot2::aes(
+        x = x_centre,
+        y = y_centre,
+        width = bin_width,
+        height = bin_height,
+        fill = prop
+      ),
+      alpha = 0.8
+    ) +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        x = x_centre,
+        y = y_centre,
+        label = sprintf("%.1f%%\n(n=%d)", prop * 100, n)
+      ),
+      size = 3.5
+    ) +
+    draw_goal_base(include_shots_over_bar = FALSE) +
+    plot_dive_zones() +
+    ggplot2::scale_fill_gradientn(
+      colours = pal_density,
+      limits = c(0, max_prop),
+      labels = scales::label_percent(),
+      name = "Shot proportion",
+      guide = ggplot2::guide_colorbar(
+        direction = "horizontal",
+        barwidth = grid::unit(4, "cm"),
+        barheight = grid::unit(0.3, "cm"),
+        title.position = "left",
+        title.vjust = 1,
+        frame.colour = "black",
+        ticks.colour = "black",
+        ticks.linewidth = 0.8
+      )
+    ) +
+    ggplot2::labs(title = title)
+}
+
+p1 <- bin_plot(
+  binned_left,
+  paste0("Left-footed shots (n = ", n_left, ")")
+)
+
+p2 <- bin_plot(
+  binned_right,
+  paste0("Right-footed shots (n = ", n_right, ")")
+)
+
+p3 <- bin_plot(
+  binned_left_mirrored,
+  "Left-footed shots, mirrored"
+)
+
+# difference plots: right proportion minus left proportion per bin
+diff_df <- tibble::tibble(
+  x_bin = binned_right$x_bin,
+  y_bin = binned_right$y_bin,
+  x_centre = binned_right$x_centre,
+  y_centre = binned_right$y_centre,
+  bin_width = binned_right$bin_width,
+  bin_height = binned_right$bin_height,
+  prop_diff = binned_right$prop - binned_left$prop
+)
+
+diff_mirrored_df <- tibble::tibble(
+  x_bin = binned_right$x_bin,
+  y_bin = binned_right$y_bin,
+  x_centre = binned_right$x_centre,
+  y_centre = binned_right$y_centre,
+  bin_width = binned_right$bin_width,
+  bin_height = binned_right$bin_height,
+  prop_diff = binned_right$prop - binned_left_mirrored$prop
+)
+
+diff_limit <- max(abs(diff_df$prop_diff), abs(diff_mirrored_df$prop_diff))
+
+diff_bin_plot <- function(data, title) {
+  ggplot2::ggplot(data) +
+    ggplot2::geom_tile(
+      ggplot2::aes(
+        x = x_centre,
+        y = y_centre,
+        width = bin_width,
+        height = bin_height,
+        fill = prop_diff
+      ),
+      alpha = 0.8
+    ) +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        x = x_centre,
+        y = y_centre,
+        label = sprintf("%+.1f pp", prop_diff * 100)
+      ),
+      size = 3.5
+    ) +
+    draw_goal_base(include_shots_over_bar = FALSE) +
+    plot_dive_zones() +
+    ggplot2::scale_fill_gradient2(
+      low = pal_diff[1],
+      mid = "white",
+      high = pal_diff[4],
+      midpoint = 0,
+      limits = c(-diff_limit, diff_limit),
+      labels = scales::label_percent(),
+      name = "Diff (R \u2212 L)",
+      guide = ggplot2::guide_colorbar(
+        direction = "horizontal",
+        barwidth = grid::unit(4, "cm"),
+        barheight = grid::unit(0.3, "cm"),
+        title.position = "left",
+        title.vjust = 1,
+        frame.colour = "black",
+        ticks.colour = "black",
+        ticks.linewidth = 0.8
+      )
+    ) +
+    ggplot2::labs(title = title)
+}
+
+p4 <- diff_bin_plot(
+  diff_df,
+  "Difference (Right-footed \u2212 Left-footed)"
+)
+
+p5 <- diff_bin_plot(
+  diff_mirrored_df,
+  "Difference by preferred side (Right-footed \u2212 Left-footed mirrored)"
+)
+
+inline_legend_theme <- ggplot2::theme(
+  legend.position = c(1, 1),
+  legend.justification = c(1, 0),
+  legend.direction = "horizontal",
+  legend.background = ggplot2::element_blank(),
+  legend.margin = ggplot2::margin(0, 0, 0, 0),
+  legend.box.margin = ggplot2::margin(0, 0, 0, 0),
+  legend.box.spacing = grid::unit(0, "pt"),
+  legend.title = ggplot2::element_text(size = 9),
+  legend.text = ggplot2::element_text(size = 8)
+)
+
+tight_margin <- ggplot2::theme(plot.margin = ggplot2::margin(2, 2, 2, 2))
+
+p1 <- p1 + inline_legend_theme + tight_margin
+p2 <- p2 + ggplot2::guides(fill = "none") + tight_margin
+p3 <- p3 + ggplot2::guides(fill = "none") + tight_margin
+p4 <- p4 + inline_legend_theme + tight_margin
+p5 <- p5 + ggplot2::guides(fill = "none") + tight_margin
+
+pp <- (p1 / p2 / p3 / p4 / p5) +
+  patchwork::plot_layout(heights = rep(1, 5)) +
+  patchwork::plot_annotation(
+    title = "Penalty kick placement by dive zone",
+    theme = ggplot2::theme(plot.title = ggplot2::element_text(face = "bold"))
+  )
+pp
+```
+
+### Heatmap
+
+```{r}
+#| fig-height: 10
+#| fig-width: 7
+#| fig-align: center
+#| fig-format: png
+#| fig-dpi: 300
+plot_xlim <- c(min(df$shot_x_meters), max(df$shot_x_meters))
+plot_ylim <- c(min(df$shot_y_meters), max(df$shot_y_meters))
+
+# plot_xlim <- c(-(post_offset + diameter_post), post_offset + diameter_post)
+# plot_ylim <- c(0, crossbar_height + diameter_post)
+
+# The goal is ~3× wider than tall, so a square grid would give cells that are
+# 3× coarser horizontally than vertically. Scale the x count to keep cells
+# roughly square.
+n_grid <- c(round(100 * diff(plot_xlim) / diff(plot_ylim)), 100)
+contour_levels <- 20
+
+# Shared bandwidth across all groups so differences aren't confounded by
+# per-group smoothing. Same rule (bandwidth.nrd) that MASS::kde2d uses by default.
+shared_h <- c(
+  MASS::bandwidth.nrd(df$shot_x_meters),
+  MASS::bandwidth.nrd(df$shot_y_meters)
+)
+
+kde_df <- function(data) {
+  k <- MASS::kde2d(
+    data$shot_x_meters,
+    data$shot_y_meters,
+    h = shared_h,
+    n = n_grid,
+    lims = c(plot_xlim, plot_ylim)
+  )
+  expand.grid(x = k$x, y = k$y) |>
+    dplyr::mutate(density = as.vector(k$z))
+}
+
+kde_left_df <- kde_df(df_left)
+kde_right_df <- kde_df(df_right)
+kde_left_mirrored_df <- kde_df(df_left_mirrored)
+
+max_density <- max(
+  kde_left_df$density,
+  kde_right_df$density,
+  kde_left_mirrored_df$density
+)
+
+# Below this, the KDE is treated as noise and left unplotted so the white
+noise_frac <- 0.1
+density_noise_floor <- max_density * noise_frac
+density_breaks <- seq(
+  density_noise_floor,
+  max_density,
+  length.out = contour_levels + 1
+)
+
+heatmap_layers <- list(
+  ggplot2::geom_contour_filled(
+    ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+    breaks = density_breaks
+  ),
+  ggplot2::scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    limits = c(density_noise_floor, max_density),
+    breaks = c(density_noise_floor, max_density),
+    labels = scales::label_number(accuracy = 0.01),
+    name = "Shot density",
+    guide = ggplot2::guide_colorbar(
+      direction = "horizontal",
+      barwidth = grid::unit(4, "cm"),
+      barheight = grid::unit(0.3, "cm"),
+      title.position = "left",
+      title.vjust = 1,
+      frame.colour = "black",
+      ticks.colour = "black",
+      ticks.linewidth = 0.8
+    )
+  )
+)
+
+kde_combined_df <- dplyr::bind_rows(
+  kde_left_df |> dplyr::mutate(kick_foot = "Left"),
+  kde_right_df |> dplyr::mutate(kick_foot = "Right")
+)
+
+# p <- ggplot2::ggplot(kde_combined_df, ggplot2::aes(x = x, y = y, z = density)) +
+#   draw_goal_base(include_shots_over_bar = FALSE) +
+#   heatmap_layers +
+#   ggplot2::facet_wrap(~kick_foot, nrow = 2)
+
+# ggsave("figures/heatmap.png", p, dpi = 300, width = 20, height = 6.33)
+
+n_left <- nrow(df_left)
+n_right <- nrow(df_right)
+
+p2 <- ggplot2::ggplot(kde_left_df, ggplot2::aes(x = x, y = y, z = density)) +
+  heatmap_layers +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(title = paste0("Left-footed shots (n = ", n_left, ")"))
+
+p3 <- ggplot2::ggplot(kde_right_df, ggplot2::aes(x = x, y = y, z = density)) +
+  heatmap_layers +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(title = paste0("Right-footed shots (n = ", n_right, ")"))
+
+p4 <- ggplot2::ggplot(kde_left_mirrored_df, ggplot2::aes(x = x, y = y, z = density)) +
+  heatmap_layers +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(
+    title = paste0(
+      "Left-footed shots, mirrored"
+    )
+  )
+
+diff_df <- tibble::tibble(
+  x = kde_right_df$x,
+  y = kde_right_df$y,
+  density_diff = kde_right_df$density - kde_left_df$density
+)
+
+diff_mirrored_df <- tibble::tibble(
+  x = kde_right_df$x,
+  y = kde_right_df$y,
+  density_diff = kde_right_df$density - kde_left_mirrored_df$density
+)
+
+# Shared symmetric contour breaks across both difference plots, with an
+# explicit dead zone around zero so the "no signal" band is just white space.
+diff_limit <- max(
+  abs(diff_df$density_diff),
+  abs(diff_mirrored_df$density_diff)
+)
+diff_noise_floor <- diff_limit * noise_frac
+diff_pos_breaks <- seq(
+  diff_noise_floor,
+  diff_limit,
+  length.out = contour_levels / 2 + 1
+)
+diff_neg_breaks <- seq(
+  -diff_limit,
+  -diff_noise_floor,
+  length.out = contour_levels / 2 + 1
+)
+
+diff_layers <- function(name) {
+  list(
+    ggplot2::geom_contour_filled(
+      ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+      breaks = diff_pos_breaks
+    ),
+    ggplot2::geom_contour_filled(
+      ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+      breaks = diff_neg_breaks
+    ),
+    ggplot2::scale_fill_gradient2(
+      # density_diff = Right - Left, so negative = Left-footed overrepresented
+      # (red) and positive = Right-footed overrepresented (blue).
+      low = "#e74c3c",
+      mid = "white",
+      high = "#3498db",
+      midpoint = 0,
+      limits = c(-diff_limit, diff_limit),
+      breaks = c(-diff_limit, 0, diff_limit),
+      labels = c(
+        sprintf("%.2f\n(L over-rep.)", -diff_limit),
+        "0",
+        sprintf("%.2f\n(R over-rep.)", diff_limit)
+      ),
+      name = name,
+      guide = ggplot2::guide_colorbar(
+        direction = "horizontal",
+        barwidth = grid::unit(4, "cm"),
+        barheight = grid::unit(0.3, "cm"),
+        title.position = "left",
+        title.vjust = 1,
+        frame.colour = "black",
+        ticks.colour = "black",
+        ticks.linewidth = 0.8
+      )
+    )
+  )
+}
+
+p5 <- ggplot2::ggplot(diff_df, ggplot2::aes(x = x, y = y, z = density_diff)) +
+  diff_layers("Density diff") +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(
+    title = paste0(
+      "Difference (Right-footed \u2212 Left-footed)"
+    )
+  )
+
+p6 <- ggplot2::ggplot(diff_mirrored_df, ggplot2::aes(x = x, y = y, z = density_diff)) +
+  diff_layers("Density diff") +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(
+    title = paste0(
+      "Difference by preferred side (Right-footed \u2212 Left-footed mirrored)"
+    )
+  )
+
+# Place the colourbar inline with the subplot title: anchor its bottom-right
+# at the top-right of the panel so the bar extends up into the title strip
+# area on the right while the title sits left.
+inline_legend_theme <- ggplot2::theme(
+  legend.position = c(1, 1),
+  legend.justification = c(1, 0),
+  legend.direction = "horizontal",
+  legend.background = ggplot2::element_blank(),
+  legend.margin = ggplot2::margin(0, 0, 0, 0),
+  legend.box.margin = ggplot2::margin(0, 0, 0, 0),
+  legend.box.spacing = grid::unit(0, "pt"),
+  legend.title = ggplot2::element_text(size = 9),
+  legend.text = ggplot2::element_text(size = 8)
+)
+
+p2 <- p2 + inline_legend_theme + tight_margin
+p3 <- p3 + ggplot2::guides(fill = "none") + tight_margin
+p4 <- p4 + ggplot2::guides(fill = "none") + tight_margin
+p5 <- p5 + inline_legend_theme + tight_margin
+p6 <- p6 + ggplot2::guides(fill = "none") + tight_margin
+
+pp <- (p2 / p3 / p4 / p5 / p6) +
+  patchwork::plot_layout(heights = rep(1, 5)) +
+  patchwork::plot_annotation(
+    title = "Penalty kick placement",
+    theme = ggplot2::theme(plot.title = ggplot2::element_text(face = "bold"))
+  )
+pp
+```
+
+:::
+
+So left- and right-footed players have almost identical shooting patterns once you account for the dominant side.
+
+## In different game states, do penalty takers choose their strong side more often?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout) |>
+  dplyr::count(score_diff_taking_team_coarse, shot_zone_dominance) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = score_diff_taking_team_coarse
+  ) |>
+  dplyr::mutate(score_diff_taking_team_coarse = label_game_state(score_diff_taking_team_coarse)) |>
+  placement_gradient_table(score_diff_taking_team_coarse, "Game state")
+```
+
+## In shootouts, do penalty takers choose their strong side more often?
+```{r}
+df_male |>
+  dplyr::count(is_shootout, shot_zone_dominance) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = is_shootout
+  ) |>
+  dplyr::mutate(is_shootout = dplyr::if_else(is_shootout, "Shootout", "In play")) |>
+  placement_gradient_table(is_shootout, "Phase")
+```
+
+## In stoppage time, to go ahead, do penalty takers choose their strong side more often?
+```{r}
+# second-half stoppage time, tied (is_second_half_added_time = SecondHalf past 90:00)
+df_male |>
+  dplyr::filter(!is_shootout) |> 
+  dplyr::mutate(high_pressure = is_second_half_added_time & score_diff_taking_team_coarse == 'equal') |> 
+  dplyr::count(high_pressure, shot_zone_dominance) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = high_pressure
+  ) |>
+  dplyr::mutate(
+    high_pressure = dplyr::if_else(
+      high_pressure, "Stoppage time & tied", "Everything else"
+    )
+  ) |>
+  placement_gradient_table(high_pressure, "Situation")
+```
+
+## Do penalty takers shoot differently by position?
+```{r}
+df_male |>
+  dplyr::filter(!is.na(most_common_start_position_binned)) |> 
+  dplyr::count(most_common_start_position_binned, shot_zone_dominance) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = most_common_start_position_binned
+  ) |>
+  dplyr::mutate(most_common_start_position_binned = label_position(most_common_start_position_binned)) |>
+  placement_gradient_table(most_common_start_position_binned, "Usual position")
+```
+
+## Do less experienced penalty takers shoot differently?
+```{r}
+df_male |> 
+  dplyr::add_count(taker_id, name = "penalties_taken") %>%
+  dplyr::mutate(
+    experience_level = dplyr::case_when(
+      penalties_taken == 1  ~ "rookie",
+      penalties_taken <= 4  ~ "novice",
+      penalties_taken <= 12 ~ "regular",
+      penalties_taken <= 24 ~ "proven",
+      penalties_taken >= 25 ~ "veteran",
+      TRUE                  ~ "unknown"
+    ),
+    experience_level = factor(
+      experience_level,
+      levels = c("unknown", "rookie", "novice", "regular", "proven", "veteran"),
+      ordered = TRUE
+  )) |>  
+    dplyr::group_by(experience_level) |> 
+    dplyr::mutate(experience_level_string = glue::glue(
+      "{stringr::str_to_sentence(stringr::str_replace_all(experience_level, '_', ' '))} ({dplyr::n_distinct(taker_id)} players)"
+    )) |>
+    dplyr::ungroup() |> 
+    dplyr::count(experience_level, experience_level_string, shot_zone_dominance) |>
+    dplyr::mutate(
+      prop = n / sum(n),
+      prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = experience_level_string
+  ) |>
+  dplyr::arrange(experience_level) |>
+  placement_gradient_table(experience_level_string, "Experience")
+```
+
+I would expect less experienced penalty takers to rely heavily on their dominant side, trusting it over their weaker side. This indeed seems to be the case, although the differences are minor. Similarly, I expected veterans to vary their choices more to remain unpredictable. A finer analysis could look at this on a granular level and classify takers dynamically over time—asking, for instance, if early penalties differ from later ones. Here, players are assigned the same category for the entire dataset, which is debatable.
+
+## What are the most extreme penalties on record?
+
+::: {.column-screen}
+```{r}
+#| fig-height: 5.76
+#| fig-width: 24
+#| out-width: "100%"
+#| message: false
+#| warning: false
+goal_centre_y <- crossbar_height / 2
+
+extremes <- df |>
+  dplyr::mutate(
+    abs_width = abs(shot_x_meters),
+    dist_from_centre = sqrt(shot_x_meters^2 + (shot_y_meters - goal_centre_y)^2),
+    # distance to the nearer top corner (where post meets crossbar): the
+    # unsaveable "top bins"
+    dist_top_corner = sqrt(
+      (post_offset - abs(shot_x_meters))^2 + (crossbar_height - shot_y_meters)^2
+    ),
+    # plot_shots()'s palette expects "Miss"; the data stores "Missed"
+    outcome = dplyr::if_else(outcome == "Missed", "Miss", outcome)
+  )
+
+highlighted <- dplyr::bind_rows(
+  # Messi tops "widest" and "furthest", so we also keep the runner-up (#2)
+  extremes |> dplyr::slice_max(abs_width, n = 2, with_ties = FALSE) |>
+    dplyr::mutate(query = paste0("Widest penalty on record (#", dplyr::row_number(), ")")),
+  extremes |> dplyr::filter(outcome == "Saved") |> dplyr::slice_max(abs_width, n = 1) |>
+    dplyr::mutate(query = "Widest saved penalty on record"),
+  extremes |> dplyr::slice_max(dist_from_centre, n = 2, with_ties = FALSE) |>
+    dplyr::mutate(query = paste0("Furthest from the goal centre (#", dplyr::row_number(), ")")),
+  extremes |> dplyr::filter(outcome == "Saved") |> dplyr::slice_max(dist_from_centre, n = 1) |>
+    dplyr::mutate(query = "Furthest from the goal centre (saved)"),
+  extremes |> dplyr::slice_max(shot_y_meters, n = 1) |>
+    dplyr::mutate(query = "Highest penalty on record"),
+  # closest a scored penalty came to the perfect "top bins" finish
+  extremes |>
+    dplyr::filter(
+      outcome == "Goal",
+      abs(shot_x_meters) <= post_offset,
+      shot_y_meters <= crossbar_height
+    ) |>
+    dplyr::slice_min(dist_top_corner, n = 1) |>
+    dplyr::mutate(query = "Closest to the top bins (scored)")
+) |>
+  # the same kick can win more than one of the questions
+  dplyr::summarise(
+    query = paste(query, collapse = "\n+ "),
+    .by = c(
+      taker_name, outcome, gk_name, home_team_name, away_team_name,
+      competition, season, shot_x_meters, shot_y_meters
+    )
+  ) |>
+  dplyr::mutate(
+    # credit the goalkeeper on the penalties they actually saved
+    keeper_note = dplyr::if_else(
+      outcome == "Saved",
+      paste0("\nsaved by ", gk_name),
+      ""
+    ),
+    label = glue::glue(
+      "{query}\n",
+      "{taker_name} — {outcome}{keeper_note}\n",
+      "{home_team_name} vs {away_team_name}\n",
+      "{competition}, {season}\n",
+      "({round(shot_x_meters, 1)} m wide, {round(shot_y_meters, 1)} m high)"
+    ),
+    # vary the angle each label leaves its point at, so the connectors fan out
+    # rather than all pointing straight up (kept small to keep arrows short)
+    nudge_x = dplyr::case_when(
+      shot_y_meters > 4 ~ 2 * sign(-shot_x_meters), # high shots: swing inward
+      shot_x_meters > 8 ~ -2, # far-right misses: up and to the left
+      shot_x_meters < -8 ~ 2, # far-left misses: up and to the right
+      TRUE ~ 1.6 * sign(shot_x_meters)
+    ),
+    nudge_y = dplyr::if_else(shot_y_meters > 4, -1.6, 1.1)
+  )
+
+x_max <- max(abs(highlighted$shot_x_meters)) + 1.5
+
+highlighted |>
+  ggplot2::ggplot(ggplot2::aes(x = shot_x_meters, y = shot_y_meters)) +
+  draw_goal_base(include_shots_over_bar = TRUE, include_shots_wide = TRUE) +
+  plot_shots() +
+  # Wes Anderson palette (Zissou1 / Darjeeling1) for the shot outcomes
+  ggplot2::scale_fill_manual(
+    values = c(
+      Goal = "#00A08A",
+      Saved = "#F21A00",
+      Miss = "#E1AF00",
+      Post = "#F98400"
+    )
+  ) +
+  # solid markers so the (otherwise tiny) extreme shots are easy to spot
+  ggplot2::geom_point(ggplot2::aes(color = outcome), size = 2.6) +
+  ggplot2::scale_color_manual(
+    values = c(
+      Goal = "#00A08A",
+      Saved = "#F21A00",
+      Miss = "#E1AF00",
+      Post = "#F98400"
+    )
+  ) +
+  ggrepel::geom_label_repel(
+    data = highlighted,
+    ggplot2::aes(label = label),
+    color = "gray15",
+    size = 3.2,
+    lineheight = 0.95,
+    fill = scales::alpha("white", 0.9),
+    label.size = 0.3,
+    # per-point offsets give each connector a different angle
+    nudge_x = highlighted$nudge_x,
+    nudge_y = highlighted$nudge_y,
+    force = 1,
+    force_pull = 1,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.4,
+    segment.color = "gray40",
+    segment.curvature = -0.15,
+    segment.ncp = 3,
+    arrow = grid::arrow(length = grid::unit(0.005, "npc"), type = "closed"),
+    min.segment.length = 0,
+    max.overlaps = Inf,
+    seed = 42
+  ) +
+  # grass at the bottom, sky above to hold the labels; expand = FALSE keeps the
+  # device aspect matched to the data so there is no letterboxing
+  ggplot2::coord_fixed(
+    ratio = 1,
+    xlim = c(-x_max, x_max),
+    ylim = c(-0.4, 6.8),
+    expand = FALSE
+  ) +
+  ggplot2::theme(legend.position = "none")
+```
+:::
+
+Note: the coordinates are Opta's estimation of where the ball crossed the line, not where it hit the back of the net, and "width" is the horizontal distance from the centre of the goal, while "distance from the centre of the goal" is the straight-line distance to the
+middle of the goal mouth (0 m wide, half the crossbar height). 
+
+The widest penalty on record is a highly unusual one. Against Celta Vigo in 2016, Lionel Messi [_passed_](https://youtu.be/4PQZDBOV34k?t=12) the penalty kick to his teammate Luis Suárez -- a tribute to the routine pioneered by Johan Cruyff and Jesper Olsen nearly 40 years earlier. (Cruyff would pass away just over a month later from lung cancer.) The data faithfully records Messi's penalty as a wildly wide "miss." Because Messi is an anomaly here, the plot also includes the runner-up (unfortunately, no video exists). If we restrict the data to penalties the keeper actually saved, we return to the goal frame with the [perfectly fine strike of Christian Gytkjær](https://youtu.be/ZaquJl3ZF1c?t=144) that was saved by Wladimiro Falcone and helped Lecce stay up. 
+
+For contrast we also mark the [highest penalty on record](https://www.youtube.com/watch?v=ILAHfZA3cAU
+) (which is also remarkably wide) and [the goal that came closest to the perfect "top bins"](https://youtu.be/bMCoKXq5InU?t=271).
+
+To properly quantify the "best" penalty and the "best" save, we would ideally look at the residuals of an expected penalty goals model -- but that is a topic for a later post.
+
+# Keeper-shooter interaction
+## If keeper chooses correct, what proportion of penalty kicks do they save?
+```{r}
+gk_save_by_side <- df_male |>
+  dplyr::filter(!is.na(gk_correct)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_saved), .by = gk_correct)
+
+save_rate_correct <- gk_save_by_side |> dplyr::filter(gk_correct) |> dplyr::pull(prop)
+save_rate_wrong <- gk_save_by_side |> dplyr::filter(!gk_correct) |> dplyr::pull(prop)
+
+gk_save_by_side |>
+  dplyr::transmute(
+    side = dplyr::if_else(gk_correct, "Correct side", "Wrong side"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(side = "Keeper dived", n = "Penalties", prop = "Save rate") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+If a goalkeeper dives to the correct side, they still only save `r scales::percent(save_rate_correct, accuracy = 1)` of the penalties. Moreover, if a goalkeeper dives to the correct side, the probability of saving the penalty increases dramatically (stellar insight, I know!). Notably, even when the goalkeeper chooses the wrong side, they save `r scales::percent(save_rate_wrong, accuracy = 0.1)` of the penalties.
+
+## What proportion is a goal if keeper chooses correct side?
+```{r}
+df_male |>
+  dplyr::filter(!is.na(gk_correct)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = gk_correct) |>
+  dplyr::transmute(
+    side = dplyr::if_else(gk_correct, "Correct side", "Wrong side"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(side = "Keeper dived", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+
+strat_by_shot_zone <- df_male |>
+  dplyr::filter(!is.na(gk_correct)) |> 
+  dplyr::count(gk_correct, shot_zone, is_goal) |>
+  dplyr::mutate(prop = n / sum(n) * 100, .by = c(gk_correct, shot_zone)) |> 
+  dplyr::filter(is_goal)
+```
+
+(this is slightly inflated by centre, i.e. if a keeper decides to stay in the centre and the player shoots in the centre they have a much higher chance of saving compared to non-centered shots -- `r round(strat_by_shot_zone |> dplyr::filter(gk_correct, shot_zone == "Centre") |> dplyr::pull(prop), 1)`% of shots down the middle where the goalkeeper stays put result in a goal).
+
+```{r}
+strat_by_shot_zone |>
+  dplyr::mutate(
+    side = dplyr::if_else(gk_correct, "Keeper correct", "Keeper wrong"),
+    prop = prop / 100
+  ) |>
+  dplyr::select(shot_zone, side, prop) |>
+  tidyr::pivot_wider(names_from = side, values_from = prop) |>
+  dplyr::arrange(match(shot_zone, c("Left", "Centre", "Right"))) |>
+  dplyr::relocate(`Keeper correct`, `Keeper wrong`, .after = shot_zone) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Conversion rate", columns = c(`Keeper correct`, `Keeper wrong`)) |>
+  gt::cols_label(shot_zone = "Shot placement") |>
+  gt::fmt_percent(c(`Keeper correct`, `Keeper wrong`), decimals = 1) |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+# Shootouts
+## In shootouts, what proportion of penalty kicks are scored?
+```{r}
+shootout_conv <- df_male |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal)*100, .by = is_shootout)
+
+shootout_conv |>
+  dplyr::transmute(
+    phase = dplyr::if_else(is_shootout, "Shootout", "In play"),
+    n, prop = prop / 100
+  ) |>
+  gt::gt() |>
+  gt::cols_label(phase = "Phase", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+That is `r round(shootout_conv$prop[shootout_conv$is_shootout == FALSE] - shootout_conv$prop[shootout_conv$is_shootout == TRUE], 1)` percentage points lower. To what extent is this explained by worse penalty takers being forced to step up? Let's stratify the analysis by those who have taken 10+ penalties outside of shootouts too.
+
+```{r}
+players_w_more_than_ten_pks_outside_so <- df_male  |> dplyr::filter(!is_shootout)  |> dplyr::count(taker_id)  |> dplyr::filter(n >= 10) |> dplyr::pull(taker_id)
+
+shootout_conv_exp_players <- df_male |>
+  dplyr::filter(taker_id %in% players_w_more_than_ten_pks_outside_so) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal)*100, .by = is_shootout)
+
+shootout_conv_exp_players |>
+  dplyr::transmute(
+    phase = dplyr::if_else(is_shootout, "Shootout", "In play"),
+    n, prop = prop / 100
+  ) |>
+  gt::gt() |>
+  gt::cols_label(phase = "Phase", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+That's `r round(shootout_conv_exp_players$prop[shootout_conv_exp_players$is_shootout == FALSE] - shootout_conv_exp_players$prop[shootout_conv_exp_players$is_shootout == TRUE], 0)` percentage points. The difference is smaller than before, so the lower conversion rate in shootouts seems to be a combination of worse takers and a remainder I ascribe to the situation being genuinely harder.
+
+## What proportion is scored in the sudden death phase of the shootout where non favored placers are forced to step up?
+
+```{r}
+df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::mutate(sudden_death = shootout_team_kick_seq_nr > 5) |>
+  dplyr::group_by(sudden_death) |>
+  dplyr::summarise(conversion_rate = mean(is_goal), n = dplyr::n(), .groups = "drop") |>
+  dplyr::transmute(
+    phase = dplyr::if_else(sudden_death, "Sudden death (kick 6+)", "Regular (kicks 1–5)"),
+    n, conversion_rate
+  ) |>
+  gt::gt() |>
+  gt::cols_label(phase = "Shootout phase", n = "Penalties", conversion_rate = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(conversion_rate, decimals = 1) |>
+  gt::data_color(columns = conversion_rate, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+Interesting results, although even more caution with causal inferences is warranted here as only very specific situations lead to shootouts, mainly: teams need to be equally (in)competent during regular time and during the shootout. The result could also be explained by more pressure being better, or the goalkeeper having less information on these takers.
+
+## Who takes penalties in shootouts?
+```{r}
+df_male |>
+  dplyr::filter(is_shootout, !is.na(taker_position_binned)) |>
+  dplyr::count(taker_position_binned) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::arrange(dplyr::desc(n)) |>
+  dplyr::transmute(
+    position = label_position(taker_position_binned),
+    n, prop, bar = prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(position = "Position (on the day)", n = "Penalties", prop = "Share", bar = "") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gtExtras::gt_plt_bar_pct(
+    column = bar, scaled = FALSE, fill = "#78B7C5",
+    background = "#eef2f4", height = 14, width = 120
+  ) |>
+  gt_theme_penalties()
+```
+
+Most shootout penalty takers are subs!
+
+```{r}
+df_male |>
+  dplyr::filter(is_shootout, !is.na(most_common_start_position_binned)) |>
+  dplyr::count(most_common_start_position_binned) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::arrange(dplyr::desc(n)) |>
+  dplyr::transmute(
+    position = label_position(most_common_start_position_binned),
+    n, prop, bar = prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(position = "Usual position", n = "Penalties", prop = "Share", bar = "") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gtExtras::gt_plt_bar_pct(
+    column = bar, scaled = FALSE, fill = "#78B7C5",
+    background = "#eef2f4", height = 14, width = 120
+  ) |>
+  gt_theme_penalties()
+```
+
+Defenders take the greatest share of penalties during shootouts, interesting! Part of this may be an artefact of attackers being split between the forwards and attacking midfielders/wingers categories. 
+
+## Does the team that takes first win more often?
+Between 2017 and 2019, there were IFAB-sanctioned experiments with changing the order in shootouts (ABBA instead of ABAB) because they believed the first-mover advantage was unfair. In our dataset, we can see however that the advantage conferred by winning the coin toss is limited:
+```{r}
+first_taker_winrate <- df_male |>
+  dplyr::filter(is_shootout, shootout_seq_total == 1) |>
+  dplyr::count(shootout_taker_won) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::filter(shootout_taker_won) |>
+  dplyr::pull(prop)
+```
+
+The team that takes the first kick goes on to win the shootout `r scales::percent(first_taker_winrate, accuracy = 0.1)` of the time.
+
+## Home advantage in shootouts?
+```{r}
+# exlcuding international country competitions because determining if teams play at home is more work; cup finals maybe exclude too
+df_male |>
+  dplyr::filter(is_shootout, competition_type != "international country") |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = taking_team_ha) |>
+  dplyr::transmute(taking_team_ha = stringr::str_to_sentence(taking_team_ha), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(taking_team_ha = "Taking team", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+This seems mainly driven by keepers saving more (though sample size is limited). A detailed analysis could account for shot-quality here to test whether shooters are performing worse or goalkeepers performing better.
+
+```{r}
+df_male |>
+  dplyr::filter(is_shootout, competition_type != "international country") |>
+  dplyr::count(taking_team_ha, outcome) |>
+  dplyr::mutate(
+    prop = n / sum(n),
+    prop_n_string = paste0(
+      scales::percent(prop, accuracy = 0.1),
+      " (n = ", format(n, big.mark = ","), ")"
+    ),
+    .by = taking_team_ha
+  ) |>
+  dplyr::select(-prop, -n) |>
+  dplyr::mutate(taking_team_ha = stringr::str_to_sentence(taking_team_ha)) |>
+  tidyr::pivot_wider(names_from = taking_team_ha, values_from = prop_n_string) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Taking team (share of penalties, n)", columns = -outcome) |>
+  gt::cols_label(outcome = "Outcome") |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+## Do the captains step up during a shootout?
+```{r}
+captain_stepup_rate <- df_male |>
+  dplyr::filter(is_shootout, shootout_team_kick_seq_nr <= 5, !is.na(taker_is_captain)) |>
+  dplyr::group_by(match_id, taking_team_ha) |>
+  dplyr::summarize(captain_stepped_up = any(taker_is_captain), .groups = "drop") |>
+  dplyr::count(captain_stepped_up) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::filter(captain_stepped_up) |>
+  dplyr::pull(prop)
+```
+
+Random chance has a player step up `r scales::percent(5 / 11, accuracy = 0.1)` of the time, but in `r scales::percent(captain_stepup_rate, accuracy = 0.1)` of shootouts an (active) captain is among the first five takers — so they step up (slightly) more often.
+
+Do they convert at a higher rate in shootouts?
+```{r}
+df_male |>
+  dplyr::filter(is_shootout, !is.na(taker_is_captain)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = taker_is_captain) |>
+  dplyr::transmute(
+    taker = dplyr::if_else(taker_is_captain, "Captain", "Not captain"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(taker = "Taker", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 2) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+Yes, captains who took penalties in a shootout were slightly better at converting penalties than non-captains.
+
+## Difference between international and national competition shootouts with respect to conversion rate?
+```{r}
+df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = competition_type) |>
+  dplyr::arrange(dplyr::desc(prop)) |>
+  dplyr::transmute(competition_type = stringr::str_to_sentence(competition_type), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(competition_type = "Competition type", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+International competitions are indeed lower, although league shootouts (present only in playoffs) are even lower, which is surprising to me.
+
+## Match points
+Penalty takers perform only slightly worse when they can possibly decide the match in a shootout:
+```{r}
+df_male |>
+  dplyr::filter(is_shootout, !is.na(shootout_is_match_point)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = shootout_is_match_point) |>
+  dplyr::transmute(
+    situation = dplyr::if_else(shootout_is_match_point, "Can decide the match", "Other kicks"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(situation = "Kick situation", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+## What is the average time between penalties in a shootout?
+Kicks come roughly 43 seconds apart with a tight spread (IQR = 10 seconds). Barely enough to grab a snack. One shootout had more than 10 minutes between two kicks when the starting goalkeeper was [sent off _during_ the shootout](https://www.goal.com/en/news/scenes-absolute-scenes---the-beautiful-farce-of-the-wildest-mls-playoff-shootout-in-history/kjl3s7byeo151ogco62pdq1po):
+```{r}
+df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::group_by(match_id) |>
+  dplyr::arrange(shootout_seq_total, .by_group = TRUE) |>
+  # time_since_start is a period; convert to seconds to take gaps between kicks
+  dplyr::mutate(gap_seconds = lubridate::period_to_seconds(time_since_start) -
+           dplyr::lag(lubridate::period_to_seconds(time_since_start))) |>
+  dplyr::ungroup() |>
+  dplyr::summarize(
+    `Median gap` = median(gap_seconds, na.rm = TRUE),
+    `IQR` = IQR(gap_seconds, na.rm = TRUE),
+    `Longest gap` = max(gap_seconds, na.rm = TRUE)
+  ) |>
+  tidyr::pivot_longer(dplyr::everything(), names_to = "metric", values_to = "seconds") |>
+  gt::gt() |>
+  gt::cols_label(metric = "Gap between kicks", seconds = "Seconds") |>
+  gt::fmt_number(seconds, decimals = 1) |>
+  gt_theme_penalties()
+```
+
+## How long are shootouts usually?
+```{r}
+#| fig-height: 1.5
+shootout_lengths <- df_male  |> 
+  filter(is_shootout)  |> 
+  distinct(match_id, shootout_seq_total)  |> 
+  group_by(match_id)  |> summarize(shootout_length = max(shootout_seq_total))
+
+shootout_lengths_freqs <- shootout_lengths |>
+  group_by(shootout_length)  |> tally()
+
+outliers_sl <- shootout_lengths |>
+  dplyr::filter(
+    shootout_length < quantile(shootout_length, 0.25) - 1.5 * IQR(shootout_length) |
+    shootout_length > quantile(shootout_length, 0.75) + 1.5 * IQR(shootout_length)
+  )
+
+shootout_lengths |>
+  ggplot2::ggplot(ggplot2::aes(x = shootout_length, y = 0)) +
+  ggplot2::geom_boxplot(
+    width = 0.5,
+    outlier.shape = NA,
+    fill = "gray85",
+    color = "gray30",
+    linewidth = 0.4
+  ) +
+  ggplot2::geom_point(
+    data = outliers_sl,
+    size = 1.5, color = "gray30", alpha = 0.8
+  ) +
+  ggplot2::scale_x_continuous(breaks = scales::breaks_pretty()) +
+  ggplot2::coord_cartesian(ylim = c(-0.4, 0.8)) +
+  ggplot2::labs(x = "Number of kicks in shootout", y = NULL) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.y = ggplot2::element_blank(),
+    axis.text.y = ggplot2::element_blank(),
+    axis.ticks.y = ggplot2::element_blank()
+  )
+```
+
+So most shootouts are decided before sudden death. 
+
+## What's the most common shootout score at the end?
+```{r}
+df_male |>
+  dplyr::filter(is_shootout) |>
+  # take the last kick of each shootout; *_goals_after already include that kick,
+  # so the final score needs no manual increment
+  dplyr::group_by(match_id) |>
+  dplyr::slice_max(shootout_seq_total, n = 1, with_ties = FALSE) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    final_score = paste0(
+      pmax(shootout_home_goals_after, shootout_away_goals_after), "–",
+      pmin(shootout_home_goals_after, shootout_away_goals_after)
+    )
+  ) |>
+  dplyr::count(final_score) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::arrange(dplyr::desc(n)) |>
+  dplyr::slice_head(n = 8) |>
+  dplyr::transmute(final_score, n, prop, bar = prop) |>
+  gt::gt() |>
+  gt::cols_label(final_score = "Final score (winner first)", n = "Shootouts", prop = "Share", bar = "") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gtExtras::gt_plt_bar_pct(
+    column = bar, scaled = FALSE, fill = "#78B7C5",
+    background = "#eef2f4", height = 14, width = 120
+  ) |>
+  gt_theme_penalties()
+```
+
+A 4–2 or 4–3 finish is the typical result, reflecting that most shootouts are settled within the first five rounds.
+
+## If a team misses their first penalty, how often do they still go on to win?
+```{r}
+first_kick_winrate <- df_male |>
+  dplyr::filter(is_shootout, shootout_team_kick_seq_nr == 1) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(shootout_taker_won), .by = is_goal)
+
+first_kick_winrate |>
+  dplyr::transmute(
+    situation = dplyr::if_else(is_goal, "Scored first kick", "Missed first kick"),
+    n, prop
+  ) |>
+  dplyr::arrange(situation) |>
+  gt::gt() |>
+  gt::cols_label(situation = "Team's first kick", n = "Teams", prop = "Won shootout") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+Missing the opening kick is costly but far from fatal: those teams still win `r scales::percent(first_kick_winrate$prop[!first_kick_winrate$is_goal], accuracy = 0.1)` of the time, against `r scales::percent(first_kick_winrate$prop[first_kick_winrate$is_goal], accuracy = 0.1)` for teams that convert it.
+
+# Match context
+## Do home teams convert a higher proportion of their penalty kicks?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout, competition_type != "international country") |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = taking_team_ha) |>
+  dplyr::transmute(taking_team_ha = stringr::str_to_sentence(taking_team_ha), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(taking_team_ha = "Taking team", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+There's barely any home advantage in the kick itself: home and away takers convert within `r df_male |> dplyr::filter(!is_shootout, competition_type != "international country") |> dplyr::summarise(p = mean(is_goal), .by = taking_team_ha) |> dplyr::summarise(g = abs(diff(p))) |> dplyr::pull(g) |> scales::percent(accuracy = 0.1)` of each other.[^2] The edge shows up one step earlier -- in winning the penalty in the first place.
+
+[^2]: Part of the coin toss for shootouts is choosing what side to face. I don't have that data here, but would be interesting to see if that has differential outcomes.
+
+## Do home teams win penalties more often?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout, competition_type != "international country") |>
+  dplyr::count(taking_team_ha) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  dplyr::transmute(taking_team_ha = stringr::str_to_sentence(taking_team_ha), n, prop) |>
+  gt::gt() |>
+  gt::cols_label(taking_team_ha = "Taking team", n = "Penalties won", prop = "Share") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt_theme_penalties()
+```
+
+This comes from winning more fouls across all kinds of elements of play, from handballs to aerials et cetera. Note that this is not necessarily bias from the referee; home teams often take more initiative in play.
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout, competition_type != "international country") |>
+  dplyr::count(foul_type, taking_team_ha) |>
+  dplyr::mutate(foul_type = label_foul(foul_type)) |>
+  tidyr::pivot_wider(names_from = foul_type, values_from = n) |>
+  dplyr::mutate(taking_team_ha = stringr::str_to_sentence(taking_team_ha)) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Foul type (penalties won)", columns = -taking_team_ha) |>
+  gt::cols_label(taking_team_ha = "Taking team") |>
+  gt::fmt_number(dplyr::where(is.numeric), decimals = 0, use_seps = TRUE) |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+## What proportion of saved penalties is still parried into danger?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout, outcome == 'Saved') |>
+  dplyr::count(rebound) |>
+  dplyr::mutate(prop = n / sum(n)) |>
+  gt::gt() |>
+  gt::cols_label(rebound = "Rebound outcome", n = "Penalties", prop = "Share") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 2) |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+## What is the count on penalty awarded over match time?
+```{r}
+period_colors <- c(
+  "FirstHalf" = "#046C9A",
+  "SecondHalf" = "#C93312",
+  "First Half" = "#046C9A",
+  "Second Half" = "#C93312"
+)
+
+pens_over_time <- df_male |>
+  dplyr::filter(!is_shootout, stringr::str_detect(period, "Half")) |>
+  dplyr::count(period, minute_in_half)
+
+total_pens_over_time <- sum(pens_over_time$n)
+
+pens_over_time |>
+  ggplot2::ggplot(ggplot2::aes(x = minute_in_half, y = n, color = period)) +
+  ggplot2::geom_vline(
+    xintercept = 45,
+    linetype = "dashed",
+    color = "gray50",
+    linewidth = 0.4
+  ) +
+  ggplot2::geom_point(size = 2, alpha = 0.85) +
+  ggplot2::scale_color_manual(values = period_colors) +
+  ggplot2::scale_x_continuous(breaks = seq(0, 45, by = 5)) +
+  ggplot2::scale_y_continuous(
+    expand = ggplot2::expansion(mult = c(0, 0.05)),
+    sec.axis = ggplot2::sec_axis(
+      ~ . / total_pens_over_time,
+      name = "Share of all penalties",
+      labels = scales::label_percent(accuracy = 0.1)
+    )
+  ) +
+  ggplot2::labs(
+    x = "Minute in half",
+    y = "Number of penalties",
+    color = NULL
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "top"
+  )
+```
+
+So either referees are really hesitant to award penalty kicks early in the match, or we're looking at the effects of tactics where teams start the match cautiously, staying well clear of the 18-yard box.
+
+## What is the conversion rate over match time?
+```{r}
+match_time <- df_male |>
+  dplyr::filter(!is_shootout, stringr::str_detect(period, "Half"))
+
+per_min <- match_time |>
+  dplyr::group_by(period, minute_in_half) |>
+  dplyr::summarise(prop = mean(is_goal), n = dplyr::n(), .groups = "drop")
+
+ggplot2::ggplot() +
+  ggplot2::geom_vline(
+    xintercept = 45,
+    linetype = "dashed",
+    color = "gray50",
+    linewidth = 0.4
+  ) +
+  ggplot2::geom_point(
+    data = per_min,
+    ggplot2::aes(x = minute_in_half, y = prop, color = period, size = n),
+    alpha = 0.35
+  ) +
+  ggplot2::geom_smooth(
+    data = match_time |> dplyr::mutate(is_goal_num = as.integer(is_goal)),
+    ggplot2::aes(x = minute_in_half, y = is_goal_num, color = period, fill = period),
+    method = "glm",
+    method.args = list(family = "binomial"),
+    formula = y ~ splines::ns(x, df = 4),
+    alpha = 0.15,
+    linewidth = 0.7
+  ) +
+  ggplot2::scale_color_manual(values = period_colors) +
+  ggplot2::scale_fill_manual(values = period_colors) +
+  ggplot2::scale_x_continuous(breaks = seq(0, 45, by = 5)) +
+  ggplot2::scale_y_continuous(labels = scales::label_percent()) +
+  ggplot2::labs(
+    x = "Minute in half",
+    y = "Conversion rate",
+    color = NULL,
+    fill = NULL,
+    size = "Penalties (per-minute n)"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "top"
+  )
+```
+
+# Substitutes
+## Do subs miss more often?
+```{r}
+df_male |>
+  dplyr::filter(!is_shootout, !is.na(taker_is_sub)) |>
+  dplyr::summarise(n = dplyr::n(), prop = mean(is_goal), .by = taker_is_sub) |>
+  dplyr::transmute(
+    taker = dplyr::if_else(taker_is_sub, "Substitute", "Started"),
+    n, prop
+  ) |>
+  gt::gt() |>
+  gt::cols_label(taker = "Taker", n = "Penalties", prop = "Conversion") |>
+  gt::fmt_number(n, decimals = 0, use_seps = TRUE) |>
+  gt::fmt_percent(prop, decimals = 1) |>
+  gt::data_color(columns = prop, palette = c("#f0f5f7", "#78B7C5")) |>
+  gt_theme_penalties()
+```
+
+## How often do players not touch the ball before taking a penalty kick in a shootout?
+```{r}
+pks_takers_shootout_zero_touches <- df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::mutate(zero_touches = taker_touches_before == 0) |>
+  dplyr::filter(zero_touches)
+```
+
+There are `r format(nrow(pks_takers_shootout_zero_touches), big.mark = ",")` shootout penalties taken without a single touch beforehand. Their conversion rate is `r scales::percent(mean(pks_takers_shootout_zero_touches$is_goal), accuracy = 0.1)` -- above average for a shootout even!
+
+## How often are players subbed on just for the shootout?
+In the final of the European Championship 2020, Sancho and Rashford were subbed on in the 120th minute just for penalties, but they were involved in play briefly -- a throw-in and a tackle -- so they were not included above. However, we can change the approach from touches to minute players were subbed on:
+
+```{r}
+pks_takers_shootout_just_on_field <- df_male |>
+  dplyr::filter(is_shootout) |>
+  dplyr::filter(taker_sub_on_minute > 119)
+```
+
+Quite some players (`r format(nrow(pks_takers_shootout_just_on_field), big.mark = ",")`) got subbed on just for the penalty kicks (in absolute terms, in relative terms it's not even 2%). Their conversion rate is worse though, `r scales::percent(mean(pks_takers_shootout_just_on_field$is_goal), accuracy = 0.1)`! Maybe coaches are wrong and folk wisdom is right: players can't take a penalty kick cold.
+
+## Goalkeepers subbed on just for penalty kick shootout?
+```{r}
+gk_shootout_just_on_field <- df_male |> 
+  dplyr::filter(is_shootout) |> 
+  dplyr::filter(gk_sub_on_minute  > 119)
+```
+
+In my dataset there are `r length(unique(gk_shootout_just_on_field$match_id))` other occurences since the famous [Tim Krul substitution](https://www.bbc.com/sport/football/28180956). The team that made this last-minute goalkeeper substitution went on to win `r gk_shootout_just_on_field  |> dplyr::distinct(match_id, .keep_all = TRUE)  |> dplyr::mutate(gk_sub_wins = taking_team_ha == shootout_winner)  |> dplyr::summarize(sum(gk_sub_wins))` times. Not all coaches were as far-sighted as Louis van Gaal!
+
+## If a player is fouled and a penalty is awarded, how often do they take the penalty themselves?
+```{r}
+foul_leading_to_pk <- df_male |> 
+  dplyr::filter(!is_shootout, foul_type  != "Handball")
+
+same_player <- foul_leading_to_pk |> 
+  dplyr::filter(taker_name == fouled_player_name)
+
+not_same_player <- foul_leading_to_pk |> 
+  dplyr::filter(taker_name != fouled_player_name)
+```
+
+When a player wins a (non-handball) penalty, they step up to take it themselves `r scales::percent(nrow(same_player) / nrow(foul_leading_to_pk), accuracy = 0.1)` of the time. Those self-taken penalties are converted at `r scales::percent(mean(same_player$is_goal), accuracy = 0.01)`, the same rate as the `r scales::percent(mean(not_same_player$is_goal), accuracy = 0.01)` for penalties handed to a teammate.
+
+## Time since foul effect on conversion rate
+```{r}
+per_min <- df_male |>
+  dplyr::filter(!is_shootout, !is.na(time_since_foul)) |>
+  dplyr::mutate(minutes_since_foul = floor(time_since_foul)) |>
+  dplyr::group_by(minutes_since_foul) |>
+  dplyr::summarise(prop = mean(is_goal), n = dplyr::n(), .groups = "drop")
+
+ggplot2::ggplot(per_min, ggplot2::aes(x = minutes_since_foul, y = prop, size = n)) +
+  ggplot2::geom_point(color = "#C93312", alpha = 0.7) +
+  ggplot2::scale_y_continuous(labels = scales::label_percent()) +
+  ggplot2::labs(
+    x = "Minutes since foul",
+    y = "Conversion rate",
+    size = "Penalties"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "top"
+  )
+```
+
+## Change in fouls per season
+Rules, interpretation thereof, and way of enforcement (e.g. VAR) have changed over the course of this dataset. Can we see trends in penalties awards as a result?
+
+```{r}
+competition_type_lookup <- df_male |> dplyr::select(competition_type, competition) |> dplyr::distinct()
+
+# Brasileirao and MLS run within a single calendar year, unlike the cross-year
+# (e.g. 2018/19) European seasons. Rather than coercing everything onto a single
+# year axis -- which conflates a 2018 calendar season with a 2018/19 one -- we
+# drop these two and plot the cross-year season label directly.
+single_year_leagues <- c("BRA-Brasileirao", "USA-Major League Soccer")
+season_start_year <- function(s) as.integer(substr(as.character(s), 1, 4))
+
+matches_per_season <- starting_lineups  |> 
+  dplyr::filter(!competition %in% single_year_leagues) |>
+  # inner join: keep only matches from the (male) competitions present in the
+  # penalty data, matching pens_per_game's scope below and avoiding a spurious
+  # NA competition_type group (women's matches) in the denominator.
+  dplyr::inner_join(competition_type_lookup, by = "competition") |>
+  dplyr::distinct(season, competition_type, match_id) |>
+  dplyr::filter(season_start_year(season) >= 2009) |>
+  dplyr::count(season, competition_type, name = "n_matches")
+
+pens_per_game <- df_male |>
+  dplyr::filter(
+    !is_shootout, !is.na(foul_type),
+    !competition %in% single_year_leagues,
+    season_start_year(season) >= 2009
+  ) |>
+  dplyr::count(season, competition_type, foul_type, name = "n_pens") |>
+  dplyr::left_join(matches_per_season, by = c("season", "competition_type")) |>
+  dplyr::mutate(
+    pens_per_game = n_pens / n_matches,
+    foul_type = label_foul(foul_type),
+    competition_type = stringr::str_to_sentence(competition_type),
+    season = factor(season, levels = sort(unique(season)))
+  )
+
+# VAR began rolling out around the 2018/19 season; mark it with a reference line.
+# With free x scales each panel re-indexes its own seasons, so we find the
+# position of 2018/19 within each facet separately.
+var_lines <- pens_per_game |>
+  dplyr::group_by(competition_type) |>
+  dplyr::summarise(x = match("2018/19", levels(droplevels(season))), .groups = "drop") |>
+  dplyr::filter(!is.na(x))
+
+foul_colors <- c(
+  "#046C9A", "#F98400", "#00A08A", "#C93312",
+  "#D8B70A", "#9986A5", "#78B7C5"
+)
+
+ggplot2::ggplot(
+  pens_per_game,
+  ggplot2::aes(x = season, y = pens_per_game, color = foul_type, group = foul_type)
+) +
+  ggplot2::geom_vline(
+    data = var_lines, ggplot2::aes(xintercept = x),
+    linetype = "dashed", color = "gray60", linewidth = 0.35
+  ) +
+  ggplot2::geom_line(linewidth = 0.45) +
+  ggplot2::geom_point(size = 0.9) +
+  ggplot2::facet_wrap(~competition_type, scales = "free") +
+  ggplot2::scale_color_manual(values = foul_colors) +
+  ggplot2::scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 2)]) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+  ggplot2::labs(
+    x = "Season",
+    y = "Penalties per game",
+    color = "Foul leading to penalty",
+    caption = "Dashed line: 2018/19, when VAR began rolling out"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 7),
+    legend.position = "top"
+  )
+```
+
+More handball penalties since VAR!
+
+Note: the international country trend line is a bit odd in the sense that the clear uptick in penalties during the 2018 WC is diluted by Nations League matches included in the same category.
+
+# A final note
+Consider the Dutch goalkeepers from this WC, and a past WC:
+```{r}
+df_male |>
+  dplyr::filter(
+    stringr::str_detect(gk_name, "Verbruggen") |
+      stringr::str_detect(gk_name, "Roefs") |
+      stringr::str_detect(gk_name, "Cillessen") |
+      stringr::str_detect(gk_name, "Krul")
+  ) |>
+  dplyr::count(gk_name, outcome) |>
+  dplyr::mutate(
+    cell = paste0(n, " (", scales::percent(n / sum(n), accuracy = 0.1), ")"),
+    .by = gk_name
+  ) |>
+  dplyr::select(gk_name, outcome, cell) |>
+  tidyr::pivot_wider(names_from = outcome, values_from = cell) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Outcome (n, share)", columns = -gk_name) |>
+  gt::cols_label(gk_name = "Goalkeeper") |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+Up to the moment of the infamous substitution, Cillessen had faced only 7 penalties in my dataset and had not saved any of them.
+```{r}
+df_male |>
+  dplyr::filter(
+    match_date < lubridate::ymd("2014-07-06"),
+    stringr::str_detect(gk_name, "Cillessen") |
+      stringr::str_detect(gk_name, "Krul")
+  ) |>
+  dplyr::count(gk_name, outcome) |>
+  tidyr::pivot_wider(names_from = outcome, values_from = n) |>
+  gt::gt() |>
+  gt::tab_spanner(label = "Outcome (penalties faced)", columns = -gk_name) |>
+  gt::cols_label(gk_name = "Goalkeeper") |>
+  gt::fmt_number(dplyr::where(is.numeric), decimals = 0) |>
+  gt::sub_missing(missing_text = "–") |>
+  gt_theme_penalties()
+```
+
+Interestingly, over the course of their careers the save percentage is remarkably similar in my dataset.[^3] Regression to the mean is real! My next blog post in this penalty series will use some statistical models to quantify e.g. how many penalties a keeper must have faced before there is more information on his penalty stopping skill than there is in the global skill of penalty stopping.
+
+[^3]: Of course they have more data from training sessions.

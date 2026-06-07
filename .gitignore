@@ -7,3 +7,6 @@
 /_site/
 
 **/*.quarto_ipynb
+
+# Penalty data is not redistributable — keep it local only
+/blog/penalty-kicks-descriptives/data/

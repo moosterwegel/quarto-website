@@ -2,11 +2,13 @@
   {
     "listing": "/index.html",
     "items": [
+      "/blog/penalty-kicks-descriptives/index.html",
       "/blog/icc/index.html",
       "/blog/metabolite-ratios/index.html",
       "/blog/mr-chemical-agents/index.html",
       "/blog/interactive-within-subject-variability-tool/index.html",
       "/blog/bivariate-censoring/index.html",
+      "/blog/r-wrangling-patterns/index.html",
       "/blog/fdr-heuristics/index.html",
       "/blog/conditional-logistic-regression-omics/index.html",
       "/blog/impute-and-remove-technical-variation-metabolomics/index.html",

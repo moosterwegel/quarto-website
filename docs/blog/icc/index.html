@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -11,6 +11,9 @@
 
 <title>Intraclass correlation coefficients for environmental epidemiologists – Max Oosterwegel – blog</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -85,15 +88,14 @@ div.csl-indent {
 <script src="../../site_libs/clipboard/clipboard.min.js"></script>
 <script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../../site_libs/quarto-html/popper.min.js"></script>
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-c6e9419c0fa028b585480d248b6f2abf.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-7a074904aa3d67a2f61feed3c79f1ec4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/all.css" rel="stylesheet">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/size.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -115,7 +117,7 @@ div.csl-indent {
 <link href="../../site_libs/quarto-ojs/quarto-ojs.css" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <script type="text/javascript">
 const typesetMath = (el) => {
@@ -1120,7 +1122,7 @@ Total execution time: 1.6 seconds.</code></pre>
 </section>
 <section id="correcting-for-measurement-error" class="level1">
 <h1>Correcting for measurement error</h1>
-<p>Using a reliability study, we can obtain more accurate effect estimates by adjusting our effect estimates for the measurement error. However, such correction will not – perhaps surprisingly – improve our statistical power. Namely, testing <span class="math inline">\(H_0: \beta_{x}^{*} = 0\)</span> is a valid test of <span class="math inline">\(H_0: \beta_{x} = 0\)</span> all along! Because <span class="math inline">\(\beta_{x}^* = 0 \iff \beta_{x} = 0\)</span> (since <span class="math inline">\(\beta_{x}^* = \beta_{x} \times ICC_1\)</span>) the unadjusted test preserves the nominal significance level in a simple univariable setting. In fact, correction for measurement error will likely result in larger standard errors (e.g.&nbsp;see example <span class="citation" data-cites="keogh2020stratos">Keogh et al. (<a href="#ref-keogh2020stratos" role="doc-biblioref">2020</a>)</span>). So there’s (again) no free lunch unfortunately: obtaining more accurate exposure estimates or increasing sample size (through both <span class="math inline">\(N\)</span> and <span class="math inline">\(k\)</span>) is the only way the statistical power can be improved.</p>
+<p>Using a reliability study, we can obtain more accurate effect estimates by adjusting our effect estimates for the measurement error. However, such correction will not – perhaps surprisingly – improve our statistical power. Namely, testing <span class="math inline">\(H_0: \beta_{x}^{*} = 0\)</span> is a valid test of <span class="math inline">\(H_0: \beta_{x} = 0\)</span> all along! Because <span class="math inline">\(\beta_{x}^* = 0 \iff \beta_{x} = 0\)</span> (since <span class="math inline">\(\beta_{x}^* = \beta_{x} \times ICC_1\)</span>) the unadjusted test preserves the nominal significance level in a simple univariable setting. In fact, correction for measurement error will likely result in larger standard errors (e.g.&nbsp;see example <span class="citation" data-cites="keogh2020stratos"><span class="nocase">Keogh et al.</span> (<a href="#ref-keogh2020stratos" role="doc-biblioref">2020</a>)</span>). So there’s (again) no free lunch unfortunately: obtaining more accurate exposure estimates or increasing sample size (through both <span class="math inline">\(N\)</span> and <span class="math inline">\(k\)</span>) is the only way the statistical power can be improved.</p>
 <p>If your goal is prediction – instead of causal inference – you probably do not want to correct for measurement error at all. This is because the realized measurement is an error-free measurement of itself (<span class="citation" data-cites="Carroll2006">Carroll et al. (<a href="#ref-Carroll2006" role="doc-biblioref">2006</a>)</span>). Correction is only necessary if the settings differ causing the naive prediction model to not be transportable across deployment settings.</p>
 <section id="divide-by-attenuation-factor" class="level2">
 <h2 class="anchored" data-anchor-id="divide-by-attenuation-factor">Divide by attenuation factor</h2>
@@ -1135,7 +1137,7 @@ Total execution time: 1.6 seconds.</code></pre>
 <section id="simulation-extrapolation-simex" class="level2">
 <h2 class="anchored" data-anchor-id="simulation-extrapolation-simex">Simulation Extrapolation (SIMEX)</h2>
 <p>The fundamental concept behind SIMEX is to deliberately inject additional error into a variable that already contains measurement error. As a prerequisite, we first use a substudy to calculate the amount of measurement error already there (to know how much error to add, we first have to know how much is already there). The procedure itself then has two phases, which give it its name. In the simulation phase, we systematically inject increasing amounts of simulated error into our data. We then run our regression model to see exactly how this increasing error variance impacts our parameter estimates. In the extrapolation phase, we model the trend of how the estimates behave as error increases and project the trend backward. This allows us to estimate the true parameters as if the error variance were zero!</p>
-<p>See e.g. <span class="citation" data-cites="keogh2020stratos">Keogh et al. (<a href="#ref-keogh2020stratos" role="doc-biblioref">2020</a>)</span> and <span class="citation" data-cites="shawSTRATOSGuidanceDocument2020">Shaw et al. (<a href="#ref-shawSTRATOSGuidanceDocument2020" role="doc-biblioref">2020</a>)</span> for more types of error correction models like elegant Bayesian approaches or approaches more applicable to other complicated settings (e.g.&nbsp;multiple variables with measurement error).</p>
+<p>See e.g. <span class="citation" data-cites="keogh2020stratos"><span class="nocase">Keogh et al.</span> (<a href="#ref-keogh2020stratos" role="doc-biblioref">2020</a>)</span> and <span class="citation" data-cites="shawSTRATOSGuidanceDocument2020">Shaw et al. (<a href="#ref-shawSTRATOSGuidanceDocument2020" role="doc-biblioref">2020</a>)</span> for more types of error correction models like elegant Bayesian approaches or approaches more applicable to other complicated settings (e.g.&nbsp;multiple variables with measurement error).</p>
 </section>
 </section>
 <section id="common-misconceptions-about-the-icc" class="level1">
@@ -1206,7 +1208,7 @@ Total execution time: 1.6 seconds.</code></pre>
 <section id="general" class="level3">
 <h3 class="anchored" data-anchor-id="general">General</h3>
 <ul>
-<li><em>STRATOS guidance document on measurement error and misclassification of variables in observational epidemiology: Part 1—Basic theory and simple methods of adjustment</em> <span class="citation" data-cites="keogh2020stratos">(<a href="#ref-keogh2020stratos" role="doc-biblioref">Keogh et al. 2020</a>)</span></li>
+<li><em>STRATOS guidance document on measurement error and misclassification of variables in observational epidemiology: Part 1—Basic theory and simple methods of adjustment</em> <span class="citation" data-cites="keogh2020stratos">(<a href="#ref-keogh2020stratos" role="doc-biblioref"><span class="nocase">Keogh et al.</span> 2020</a>)</span></li>
 <li><em>STRATOS guidance document on measurement error and misclassification of variables in observational epidemiology: Part 2—More complex methods of adjustment and advanced topics</em> <span class="citation" data-cites="shawSTRATOSGuidanceDocument2020">(<a href="#ref-shawSTRATOSGuidanceDocument2020" role="doc-biblioref">Shaw et al. 2020</a>)</span></li>
 <li><em>Reflection on modern methods: five myths about measurement error in epidemiological research</em> <span class="citation" data-cites="vansmedenReflectionModernMethods2020">(<a href="#ref-vansmedenReflectionModernMethods2020" role="doc-biblioref">Smeden, Lash, and Groenwold 2020</a>)</span></li>
 <li><em>The Strategy of Preventive Medicine</em> <span class="citation" data-cites="Rose1992">(<a href="#ref-Rose1992" role="doc-biblioref">Rose 1992</a>)</span></li>
@@ -1252,7 +1254,7 @@ Carroll, Raymond J. et al. 2006. <em>Measurement Error in Nonlinear Models: A Mo
 De Vet, Henrica CW et al. 2011. <em>Measurement in Medicine: A Practical Guide</em>. Cambridge University Press.
 </div>
 <div id="ref-devochtRethinkingCumulativeExposure2015" class="csl-entry" role="listitem">
-de Vocht, Frank, Igor Burstyn, and Nuthchyawach Sanguanchaiyakrit. 2015. <span>“Rethinking Cumulative Exposure in Epidemiology, Again.”</span> <em>Journal of Exposure Science &amp; Environmental Epidemiology</em> 25 (5). Nature Publishing Group: 467–73. doi:<a href="https://doi.org/10.1038/jes.2014.58">10.1038/jes.2014.58</a>.
+<span class="nocase">de Vocht, Frank, Igor Burstyn, and Nuthchyawach Sanguanchaiyakrit</span>. 2015. <span>“Rethinking Cumulative Exposure in Epidemiology, Again.”</span> <em>Journal of Exposure Science &amp; Environmental Epidemiology</em> 25 (5). Nature Publishing Group: 467–73. doi:<a href="https://doi.org/10.1038/jes.2014.58">10.1038/jes.2014.58</a>.
 </div>
 <div id="ref-gelman2007data" class="csl-entry" role="listitem">
 Gelman, Andrew, and Jennifer Hill. 2007. <em>Data Analysis Using Regression and Multilevel/Hierarchical Models</em>. Cambridge University Press.
@@ -1261,7 +1263,7 @@ Gelman, Andrew, and Jennifer Hill. 2007. <em>Data Analysis Using Regression and 
 Gustafson, Paul. 2003. <em>Measurement Error and Misclassification in Statistics and Epidemiology: Impacts and Bayesian Adjustments</em>. Chapman; Hall/CRC.
 </div>
 <div id="ref-keogh2020stratos" class="csl-entry" role="listitem">
-Keogh, Ruth H et al. 2020. <span>“STRATOS Guidance Document on Measurement Error and Misclassification of Variables in Observational Epidemiology: Part 1—Basic Theory and Simple Methods of Adjustment.”</span> <em>Statistics in Medicine</em> 39 (16). Wiley Online Library: 2197–2231. doi:<a href="https://doi.org/10.1002/sim.8531">10.1002/sim.8531</a>.
+<span class="nocase">Keogh, Ruth H et al.</span> 2020. <span>“STRATOS Guidance Document on Measurement Error and Misclassification of Variables in Observational Epidemiology: Part 1—Basic Theory and Simple Methods of Adjustment.”</span> <em>Statistics in Medicine</em> 39 (16). Wiley Online Library: 2197–2231. doi:<a href="https://doi.org/10.1002/sim.8531">10.1002/sim.8531</a>.
 </div>
 <div id="ref-Kriebel2010" class="csl-entry" role="listitem">
 Kriebel, David, and Thomas J. Smith. 2010. <em>A Biologic Approach to Environmental Assessment and Epidemiology</em>. Oxford: Oxford University Press.
@@ -1327,7 +1329,7 @@ Weinberg, Clarice R., and David M. Umbach. 1999. <span>“Using <span>Pooled Exp
 
 <ol>
 <li id="fn1"><p>In occupational epidemiology and air pollution epidemiology, Berkson measurement error is also prevalent. This post will exclusively focus on classical measurement error, e.g., biomarkers.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>The rationale typically invoked is that chronic disease pathogenesis develops cumulatively over years, making integrated exposure over the etiologically relevant window – rather than transient fluctuations – the construct of interest <span class="citation" data-cites="keogh2020stratos pleilHumanBiomarkerInterpretation2018 nMolecularEpidemiologyPrinciples">(<a href="#ref-keogh2020stratos" role="doc-biblioref">Keogh et al. 2020</a>; <a href="#ref-pleilHumanBiomarkerInterpretation2018" role="doc-biblioref">Pleil et al. 2018</a>; <a href="#ref-nMolecularEpidemiologyPrinciples" role="doc-biblioref">Rothman et al. 2011</a>)</span>. Conditional on the same follow-up length, the average is directly proportional to this cumulative exposure. Note, however, that cumulative exposure is not always relevant; depending on the mechanism, peak exposure, time above a threshold, or time-weighted averages (e.g.&nbsp;critical windows) may be the relevant summary metric <span class="citation" data-cites="Kriebel2010">(<a href="#ref-Kriebel2010" role="doc-biblioref">Kriebel and Smith 2010</a>)</span>. The popularity of the cumulative exposure summary is not only borne out of ease, but also because it tends to give a robust answer to the existence of an association, regardless of the underlying true mechanism of disease <span class="citation" data-cites="devochtRethinkingCumulativeExposure2015">(<a href="#ref-devochtRethinkingCumulativeExposure2015" role="doc-biblioref">de Vocht, Burstyn, and Sanguanchaiyakrit 2015</a>)</span>.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>The rationale typically invoked is that chronic disease pathogenesis develops cumulatively over years, making integrated exposure over the etiologically relevant window – rather than transient fluctuations – the construct of interest <span class="citation" data-cites="keogh2020stratos pleilHumanBiomarkerInterpretation2018 nMolecularEpidemiologyPrinciples">(<a href="#ref-keogh2020stratos" role="doc-biblioref"><span class="nocase">Keogh et al.</span> 2020</a>; <a href="#ref-pleilHumanBiomarkerInterpretation2018" role="doc-biblioref">Pleil et al. 2018</a>; <a href="#ref-nMolecularEpidemiologyPrinciples" role="doc-biblioref">Rothman et al. 2011</a>)</span>. Conditional on the same follow-up length, the average is directly proportional to this cumulative exposure. Note, however, that cumulative exposure is not always relevant; depending on the mechanism, peak exposure, time above a threshold, or time-weighted averages (e.g.&nbsp;critical windows) may be the relevant summary metric <span class="citation" data-cites="Kriebel2010">(<a href="#ref-Kriebel2010" role="doc-biblioref">Kriebel and Smith 2010</a>)</span>. The popularity of the cumulative exposure summary is not only borne out of ease, but also because it tends to give a robust answer to the existence of an association, regardless of the underlying true mechanism of disease <span class="citation" data-cites="devochtRethinkingCumulativeExposure2015">(<a href="#ref-devochtRethinkingCumulativeExposure2015" role="doc-biblioref"><span class="nocase">de Vocht, Burstyn, and Sanguanchaiyakrit</span> 2015</a>)</span>.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>In small substudies, MS_within may exceed MS_between and the formula gives a negative variance estimate.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>You can even add a random slope, but it gets very <a href="https://stats.stackexchange.com/questions/115526/intraclass-correlation-coefficient-in-mixed-model-with-random-slopes/318418#318418">complicated</a> then as the variance depends on at what value you evaluate the random slope.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>This calculation is derived from equating the precision (inverse variance) of the population prior with that of the sample mean. From an information theory perspective, the standard deviation quantifies uncertainty – meaning a narrower distribution (higher precision) contains more information. By setting the standard deviation of the between-subject distribution (<span class="math inline">\(\sigma_{\text{between}}\)</span>) equal to the standard error of the within-subject sample mean (<span class="math inline">\(\sigma_{\text{within}}/\sqrt{n}\)</span>), we identify the point where the prior and the data provide equivalent information. Solving for <span class="math inline">\(n\)</span> yields the variance ratio <span class="math inline">\(n = \sigma^2_{\text{within}} / \sigma^2_{\text{between}}\)</span>. This value represents the “equivalent sample size” of the prior. Practically, this defines the tipping point for partial pooling: below this threshold, the multilevel model shrinks estimates toward the global mean; above it, the specific subject’s data dominates.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
