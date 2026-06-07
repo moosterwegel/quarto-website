@@ -29,6 +29,7 @@ Club football is done, and the sporting world's attention turns to the 2026 FIFA
 - Approx. **11%** of kicks go down the middle. 
 - Takers generally place the ball to their dominant side about **49-50%** of the time during standard play. However, in high-pressure shootouts, players lean into their dominant side more heavily, pushing that preference up to **52.9%**.
 - Career classified rookie takers seem to lean on their dominant side more (**53.2%** vs ≈50% for veterans), though differences narrow with experience.
+- The goalkeepers that took a penalty spread their shots most evenly across all three zones -- the closest thing to a truly **unpredictable** (maximum-entropy) strategy in the data, though on a small sample.
 :::
 
 ::: {.kf-section}
@@ -448,7 +449,7 @@ p_box <- pen_counts |>
 patchwork::wrap_plots(p_hist, p_box, ncol = 1, heights = c(4, 1.9))
 ```
 
-So even among the players who have taken a penalty in this dataset, most have taken only `r pen_counts  |> dplyr::group_by(n)  |> dplyr::tally()  |> dplyr::summarize(mode = max(nn))  |> dplyr::pull(mode)`.
+So even among the players who have taken a penalty in this dataset, most have taken only `r pen_counts  |> dplyr::group_by(n)  |> dplyr::tally()  |> dplyr::slice_max(nn, n = 1)  |> dplyr::pull(n)`.
 
 ## And what proportion of players takes a penalty?
 ```{r}
@@ -670,6 +671,11 @@ df_male |>
 A taker's usual position barely moves the needle -- just `r df_male |> dplyr::filter(most_common_start_position_binned %in% c("F", "D")) |> dplyr::summarise(p = mean(is_goal), .by = most_common_start_position_binned) |> dplyr::summarise(g = abs(diff(p))) |> dplyr::pull(g) |> scales::percent(accuracy = 0.1)` separates forwards from defenders. Goalkeepers who step up seem to be slightly better than the average penalty taker, though the sample is small.
 
 # Placement
+
+::: {.callout-note}
+A note on perspective: throughout this post, every reference to a side -- where the ball is placed *and* which way the goalkeeper dives -- is given from the taker's (shooter's) point of view. So "the keeper dives left" means left as the taker sees it, not the keeper's own left.
+:::
+
 ## What side do goalkeepers dive?
 ```{r}
 df_male |>
@@ -1286,6 +1292,8 @@ df_male |>
   dplyr::mutate(most_common_start_position_binned = label_position(most_common_start_position_binned)) |>
   placement_gradient_table(most_common_start_position_binned, "Usual position")
 ```
+
+Interestingly, goalkeepers seem to understand the penalty game the best: they show the most even spread across the centre, dominant, and non-dominant zones. In game-theoretic terms this is closest to a maximum-entropy (fully unpredictable) strategy, which is exactly what a taker should aim for to keep the keeper guessing. The usual sample-size caveat applies, of course, since goalkeepers rarely take penalties.
 
 ## Do less experienced penalty takers shoot differently?
 ```{r}
