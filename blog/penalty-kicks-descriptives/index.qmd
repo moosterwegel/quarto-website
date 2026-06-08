@@ -1357,6 +1357,23 @@ extremes <- df |>
     outcome = dplyr::if_else(outcome == "Missed", "Miss", outcome)
   )
 
+# highest penalty the keeper actually saved
+highest_saved <- extremes |>
+  dplyr::filter(outcome == "Saved") |>
+  dplyr::slice_max(shot_y_meters, n = 1, with_ties = FALSE) |>
+  dplyr::mutate(query = "Highest saved penalty on record")
+
+# if that highest save came straight down the middle (the keeper's central dive
+# zone), also surface the highest one tucked into a corner, where saves are harder
+highest_saved_corner <- if (all(abs(highest_saved$shot_x_meters) <= dive_offset)) {
+  extremes |>
+    dplyr::filter(outcome == "Saved", abs(shot_x_meters) > dive_offset) |>
+    dplyr::slice_max(shot_y_meters, n = 1, with_ties = FALSE) |>
+    dplyr::mutate(query = "Highest saved penalty into a corner")
+} else {
+  NULL
+}
+
 highlighted <- dplyr::bind_rows(
   # Messi tops "widest" and "furthest", so we also keep the runner-up (#2)
   extremes |> dplyr::slice_max(abs_width, n = 2, with_ties = FALSE) |>
@@ -1369,6 +1386,8 @@ highlighted <- dplyr::bind_rows(
     dplyr::mutate(query = "Furthest from the goal centre (saved)"),
   extremes |> dplyr::slice_max(shot_y_meters, n = 1) |>
     dplyr::mutate(query = "Highest penalty on record"),
+  highest_saved,
+  highest_saved_corner,
   # closest a scored penalty came to the perfect "top bins" finish
   extremes |>
     dplyr::filter(
@@ -1473,13 +1492,13 @@ highlighted |>
 ```
 :::
 
-Note: the coordinates are Opta's estimation of where the ball crossed the line, not where it hit the back of the net, and "width" is the horizontal distance from the centre of the goal, while "distance from the centre of the goal" is the straight-line distance to the
-middle of the goal mouth (0 m wide, half the crossbar height). 
+Note: the coordinates are Opta's estimation of where the ball crossed the line, not where it hit the back of the net, and "width" is the horizontal distance from the centre of the goal, while "distance from the centre of the goal" is the straight-line distance to the middle of the goal mouth (0 m wide, half the crossbar height). 
 
 The widest penalty on record is a highly unusual one. Against Celta Vigo in 2016, Lionel Messi [_passed_](https://youtu.be/4PQZDBOV34k?t=12) the penalty kick to his teammate Luis Suárez -- a tribute to the routine pioneered by Johan Cruyff and Jesper Olsen nearly 40 years earlier. (Cruyff would pass away just over a month later from lung cancer.) The data faithfully records Messi's penalty as a wildly wide "miss." Because Messi is an anomaly here, the plot also includes the runner-up (unfortunately, no video exists). If we restrict the data to penalties the keeper actually saved, we return to the goal frame with the [perfectly fine strike of Christian Gytkjær](https://youtu.be/ZaquJl3ZF1c?t=144) that was saved by Wladimiro Falcone and helped Lecce stay up. 
 
-For contrast we also mark the [highest penalty on record](https://www.youtube.com/watch?v=ILAHfZA3cAU
-) (which is also remarkably wide) and [the goal that came closest to the perfect "top bins"](https://youtu.be/bMCoKXq5InU?t=271).
+For contrast we also mark the [highest penalty on record](https://www.youtube.com/watch?v=ILAHfZA3cAU) (which is also amazingly wide (and he didn't even slip!)) and [the goal that came closest to the perfect "top bins"](https://youtu.be/bMCoKXq5InU?t=271).
+
+The highest saved shots are pretty remarkable: [the Gavan Holohan kick](https://youtu.be/t2G7wEM7ZsU?t=66) illustrates that even when you successfully belt it high up down the middle on goal, there's a risk you miss when the keeper stays put. The [Thomas O'Connor kick](https://www.youtube.com/watch?v=brz_SghP1dM&t=99s) is unique in its own right: the keeper dived to the right while the shot hit the bar and flew up in the air, destined to go in after all (remember that a kick only ends when the ball goes out of play, stops moving entirely, or the referee calls it off), but the keeper got up in time and cleared it just below the bar. Sorry, it's really hard to explain -- just watch it.
 
 To properly quantify the "best" penalty and the "best" save, we would ideally look at the residuals of an expected penalty goals model -- but that is a topic for a later post.
 
@@ -1550,6 +1569,141 @@ strat_by_shot_zone |>
   gt::sub_missing(missing_text = "–") |>
   gt_theme_penalties()
 ```
+
+## Which shots beat the keeper, and which shots get stopped?
+```{r}
+#| fig-height: 6
+#| fig-width: 7
+#| fig-align: center
+#| fig-format: png
+#| fig-dpi: 300
+
+df_scored <- df_male |> dplyr::filter(is_goal)
+df_saved <- df_male |> dplyr::filter(is_saved)
+
+kde_scored_df <- kde_df(df_scored)
+kde_saved_df <- kde_df(df_saved)
+
+n_scored <- nrow(df_scored)
+n_saved <- nrow(df_saved)
+
+max_density_save <- max(kde_scored_df$density, kde_saved_df$density)
+density_noise_floor_save <- max_density_save * noise_frac
+density_breaks_save <- seq(
+  density_noise_floor_save,
+  max_density_save,
+  length.out = contour_levels + 1
+)
+
+save_heatmap_layers <- list(
+  ggplot2::geom_contour_filled(
+    ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+    breaks = density_breaks_save
+  ),
+  ggplot2::scale_fill_viridis_c(
+    option = "mako",
+    direction = -1,
+    limits = c(density_noise_floor_save, max_density_save),
+    breaks = c(density_noise_floor_save, max_density_save),
+    labels = scales::label_number(accuracy = 0.01),
+    name = "Shot density",
+    guide = ggplot2::guide_colorbar(
+      direction = "horizontal",
+      barwidth = grid::unit(4, "cm"),
+      barheight = grid::unit(0.3, "cm"),
+      title.position = "left",
+      title.vjust = 1,
+      frame.colour = "black",
+      ticks.colour = "black",
+      ticks.linewidth = 0.8
+    )
+  )
+)
+
+p_scored <- ggplot2::ggplot(kde_scored_df, ggplot2::aes(x = x, y = y, z = density)) +
+  save_heatmap_layers +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(title = paste0("Scored penalties (n = ", n_scored, ")"))
+
+p_saved <- ggplot2::ggplot(kde_saved_df, ggplot2::aes(x = x, y = y, z = density)) +
+  save_heatmap_layers +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(title = paste0("Saved penalties (n = ", n_saved, ")"))
+
+# difference: scored minus saved density per grid cell
+diff_save_df <- tibble::tibble(
+  x = kde_scored_df$x,
+  y = kde_scored_df$y,
+  density_diff = kde_scored_df$density - kde_saved_df$density
+)
+
+diff_limit_save <- max(abs(diff_save_df$density_diff))
+diff_noise_floor_save <- diff_limit_save * noise_frac
+diff_pos_breaks_save <- seq(
+  diff_noise_floor_save,
+  diff_limit_save,
+  length.out = contour_levels / 2 + 1
+)
+diff_neg_breaks_save <- seq(
+  -diff_limit_save,
+  -diff_noise_floor_save,
+  length.out = contour_levels / 2 + 1
+)
+
+p_diff_save <- ggplot2::ggplot(diff_save_df, ggplot2::aes(x = x, y = y, z = density_diff)) +
+  ggplot2::geom_contour_filled(
+    ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+    breaks = diff_pos_breaks_save
+  ) +
+  ggplot2::geom_contour_filled(
+    ggplot2::aes(fill = ggplot2::after_stat(level_mid)),
+    breaks = diff_neg_breaks_save
+  ) +
+  ggplot2::scale_fill_gradient2(
+    # density_diff = Scored - Saved, so blue = where scored kicks concentrate
+    # (corners, out of reach) and red = where saved kicks concentrate (central).
+    low = "#e74c3c",
+    mid = "white",
+    high = "#3498db",
+    midpoint = 0,
+    limits = c(-diff_limit_save, diff_limit_save),
+    breaks = c(-diff_limit_save, 0, diff_limit_save),
+    labels = c(
+      sprintf("%.2f\n(saved)", -diff_limit_save),
+      "0",
+      sprintf("%.2f\n(scored)", diff_limit_save)
+    ),
+    name = "Density diff",
+    guide = ggplot2::guide_colorbar(
+      direction = "horizontal",
+      barwidth = grid::unit(4, "cm"),
+      barheight = grid::unit(0.3, "cm"),
+      title.position = "left",
+      title.vjust = 1,
+      frame.colour = "black",
+      ticks.colour = "black",
+      ticks.linewidth = 0.8
+    )
+  ) +
+  draw_goal_base(include_shots_over_bar = FALSE) +
+  plot_dive_zones() +
+  ggplot2::labs(title = "Difference (Scored − Saved)")
+
+p_scored <- p_scored + inline_legend_theme + tight_margin
+p_saved <- p_saved + ggplot2::guides(fill = "none") + tight_margin
+p_diff_save <- p_diff_save + inline_legend_theme + tight_margin
+
+(p_scored / p_saved / p_diff_save) +
+  patchwork::plot_layout(heights = rep(1, 3)) +
+  patchwork::plot_annotation(
+    title = "Penalty kick placement: scored vs saved",
+    theme = ggplot2::theme(plot.title = ggplot2::element_text(face = "bold"))
+  )
+```
+
+Shots buried deep into the absolute bottom corner consistently find the net, while shots placed at a comfortable, mid-height diving distance are much more risky and often find the keeper's gloves. Penalties in the upper half of the goal seem to leave the goalkeeper with no chance. I'm glad we finally established this with data on 26 thousand kicks.
 
 # Shootouts
 ## In shootouts, what proportion of penalty kicks are scored?
