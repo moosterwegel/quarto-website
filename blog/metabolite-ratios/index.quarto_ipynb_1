@@ -28,7 +28,7 @@
         "\n",
         "While we cannot measure these rates comprehensively in our epidemiological single sample studies, we think we can get a useful proxy of such processes by looking at the ratio of metabolites. For example, the ratio of phenylalanine to its hydroxylated product, tyrosine, can serve as a direct proxy for the activity of the enzyme phenylalanine hydroxylase. A ratio can, in theory, also normalize for a low input as sometimes low levels may simply reflect low dietary intake rather than metabolic dysfunction. Or, if one of the small molecules is a xenobiotic, we obtain proxies for the detoxification capacity (e.g. absorption, distribution, metabolism, excretion). "
       ],
-      "id": "5b4259c0"
+      "id": "49bb550d"
     },
     {
       "cell_type": "code",
@@ -168,7 +168,7 @@
         "\n",
         "That said, some associations have replicated across studies with seemingly different preprocessing strategies. For instance, the negative effect of the C allele at rs1260326 on the glucose/mannose ratio shows up in @chen_genomic_2023, @suhre_human_2011, and @shin_atlas_2014. Maybe preprocessing matters less than I think -- at least for larger effects. Or maybe it only matters on the margin. Time will hopefully tell."
       ],
-      "id": "09bd5327"
+      "id": "77a26983"
     }
   ],
   "metadata": {

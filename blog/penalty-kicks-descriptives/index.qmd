@@ -736,6 +736,13 @@ On `r scales::percent(gk_correct_rate, accuracy = 0.1)` of penalties, the goalke
 #| fig-align: center
 #| fig-format: png
 #| fig-dpi: 300
+#| fig-cap: >
+#|   The dashed vertical lines at ±0.83m mark the boundaries between the
+#|   Left, Centre, and Right zones. The figure of 0.83 m is my guess at how far a
+#|   goalkeeper standing in the middle of the goal can reach to either side
+#|   without committing to a full dive, so the central band is the area a
+#|   keeper can plausibly cover from a standing start, while the left and right
+#|   zones are the corners that demand a dive.
 
 pal_density <- wesanderson::wes_palette("Zissou1Continuous", 100, type = "continuous")
 pal_diff <- wesanderson::wes_palette("GrandBudapest2")
