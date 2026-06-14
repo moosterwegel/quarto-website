@@ -10,3 +10,6 @@
 
 # Penalty data is not redistributable — keep it local only
 /blog/penalty-kicks-descriptives/data/
+/blog/penalty-kicks-statistical-models/data/
+# Cached brms model fits are derived from that data (and large) — local only
+/blog/penalty-kicks-statistical-models/models/

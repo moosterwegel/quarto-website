@@ -1,0 +1,469 @@
+/*-- scss:defaults --*/
+/* ibm-plex-mono-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/ibm-plex-mono-v19-latin-regular.woff2') format('woff2');
+}
+
+/* ibm-plex-sans-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/ibm-plex-sans-v21-latin-regular.woff2') format('woff2');
+}
+
+/* ibm-plex-sans-italic - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'IBM Plex Sans';
+  font-style: italic;
+  font-weight: 400;
+  src: url('/fonts/ibm-plex-sans-v21-latin-italic.woff2') format('woff2');
+}
+
+/* atkinson-hyperlegible-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-regular.woff2') format('woff2');
+}
+
+/* atkinson-hyperlegible-italic - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Atkinson Hyperlegible';
+  font-style: italic;
+  font-weight: 400;
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-italic.woff2') format('woff2');
+}
+
+/* atkinson-hyperlegible-700 - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/atkinson-hyperlegible-v11-latin-700.woff2') format('woff2');
+}
+
+/* scope-one-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Scope One';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/scope-one-v14-latin-regular.woff2') format('woff2');
+}
+
+$grid-body-width: 700px;
+$grid-sidebar-width: 300px;
+$grid-margin-width: 300px;
+$grid-column-gutter-width: 1.5rem;
+$link-color: #5B1317; // "#643D35" "#1D323E" "#5B1317" "#134263" old: #7b292b
+$base-font-size: 16px;
+
+/*-- scss:rules --*/
+$web-font-path: false;
+
+body {
+  font-family: "IBM Plex Sans", sans-serif !important;
+}
+
+.navbar {
+  font-size: $base-font-size * 1.2;
+}
+
+#quarto-document-content>p {
+  text-align: justify;
+}
+
+// change width for better legibility
+.container,
+.container-sm,
+.container-md,
+.container-lg,
+.container-xl,
+.container-xxl {
+  max-width: 700px !important;
+}
+
+.navbar,
+footer {
+  max-width: 700px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+}
+
+// ensures nav bar aligns across blog posts and other pages
+html {
+  overflow-y: scroll;
+}
+
+// remove whitespace before navigation bar, align with body, and handle about page alignment
+.navbar.navbar-expand-sm,
+.navbar-container.container-fluid,
+.nav-link {
+  // .nav-link also covers .nav-link.active for these properties
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+// when in mobile view etc. add margins to hamburger menu
+@media (max-width: 575.98px) {
+
+  .navbar.navbar-expand-sm,
+  .navbar-container.container-fluid,
+  .nav-link {
+    // .nav-link also covers .nav-link.active for these properties
+    padding-left: 0.5em !important;
+  }
+}
+
+// needed to align about page navbar
+.navbar-expand-sm,
+.navbar-nav {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+
+// make sure menu items have consistent spacing
+.navbar-nav {
+  width: auto !important;
+}
+
+.nav-item {
+  padding-right: 1rem !important;
+}
+
+// fix the last item padding alignment with body
+.navbar-nav.ms-auto li:last-child {
+  padding-right: 0 !important;
+}
+
+// underline upon hover navbar
+.navbar li a:hover {
+  text-decoration: underline;
+}
+
+// Put all the icons in a single row in the hamburger menu (via https://github.com/andrewheiss/ath-quarto/)
+.navbar-nav.navbar-nav-scroll.ms-auto {
+  flex-direction: row;
+}
+
+// footer decrease font size, avoid line breaks
+.nav-footer .nav-item {
+  font-size: 13px;
+  padding: 4px 8px;
+  display: inline-block;
+  /* helps prevent breaking */
+  white-space: nowrap;
+  /* prevents wrapping */
+}
+
+@media (max-width: 699.98px) {
+  .nav-footer .nav-item {
+    display: inline-block;
+    /* helps prevent breaking */
+    white-space: wrap;
+    /* prevents wrapping */
+  }
+}
+
+.nav-footer .nav-link {
+  text-decoration: none;
+  /* remove underline */
+}
+
+// remove whitespace above table listing page
+main.content#quarto-document-content {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+}
+
+// meta info article one line
+#title-block-header.quarto-title-block.default .quarto-title-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-column-gap: 1em;
+}
+
+// font sizes/types blog pages
+.content#quarto-document-content {
+  .quarto-title {
+    h1 {
+      font-size: calc(1.34rem + 0.9vw);
+    }
+  }
+
+  h1,
+  .h1,
+  h2,
+  .h2,
+  h3,
+  .h3 {
+    //  font-weight: bold;
+    margin-top: 3px;
+    margin-bottom: 10px;
+    color: #1D323E;
+    font-family: "Atkinson Hyperlegible";
+  }
+}
+
+h1,
+.h1 {
+  font-size: calc(1.27rem + 0.48vw);
+}
+
+h2,
+.h2 {
+  font-size: calc(1.25rem + 0.24vw);
+}
+
+h3,
+.h3 {
+  font-size: calc(1.23rem + 0.12vw);
+}
+
+// shrink blocks of code
+pre.text,
+pre.sourceCode,
+.cell-output pre {
+  font-family: IBM Plex Mono;
+  font-size: 0.65em;
+}
+
+p>code,
+li>code,
+span>code {
+  color: #134263; // #f5f5f5
+  border-radius: 3px;
+  padding: 0.15em 0.3em;
+  font-size: 0.8em;
+}
+
+// break up word if too long
+p,
+li {
+  hyphens: auto;
+  -webkit-hyphens: auto; // Safari
+  -moz-hyphens: auto; // Firefox (older versions)
+  -ms-hyphens: auto; // IE/Edge (older versions)
+}
+
+div.quarto-about-solana {
+  padding-top: 0.5em !important;
+}
+
+// ===== "Key findings" callout =====================================
+// A categorised TL;DR card, kept deliberately restrained (Tufte) on a
+// curated palette (Wes Anderson): warm paper ground, navy ink for ALL
+// text, and a SINGLE accent -- the post's Zissou teal #78B7C5 -- carried
+// by the rail and the bullet dots. The header keeps its slot (the title
+// sits where "Note" used to) with the icon removed. Custom dot bullets
+// and tight spacing fix the default loose list, which wraps each bullet
+// in a <p> with big margins.
+.callout.key-findings {
+  margin: 0.25rem 0 0.5rem;
+  border: 1px solid #e9e3d7;
+  border-left: 5px solid #78B7C5; // Zissou teal — the one accent
+  border-radius: 6px;
+  background: #faf8f3; // warm paper
+  box-shadow: 0 1px 3px rgba(29, 50, 62, 0.05);
+  padding: 0;
+
+  // header: drop the default note tint + pencil icon, keep the title slot.
+  // line-height tames the default leading that was bloating the header band
+  // (that, not the body padding, was the real source of the big top gap).
+  .callout-header {
+    background: transparent !important;
+    border-bottom: 1px solid #ece6da;
+    padding: 0.5rem 1.5rem 0.3rem;
+    line-height: 1.15;
+    opacity: 1;
+  }
+
+  .callout-icon-container {
+    display: none;
+  }
+
+  .callout-title-container {
+    font-family: "Atkinson Hyperlegible";
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #1D323E;
+  }
+
+  .callout-body-container {
+    padding: 0.25rem 1.5rem 0.35rem; 
+    > *:last-child,
+    p:last-child {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  .kf-section {
+    margin-bottom: 0.1rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    // category label (the bold line at the top of each section)
+    > p:first-child {
+      margin: 0 0 0.25rem;
+      font-family: "Atkinson Hyperlegible";
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1D323E; // navy ink — set apart by weight/font, not a 2nd colour
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1rem;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+      margin: 0.18rem 0;
+      line-height: 1.45;
+      text-align: left;
+      hyphens: none;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: -0.85rem;
+        top: 0.62em;
+        width: 5px;
+        height: 5px;
+        background: #78B7C5; // the one accent, echoed from the rail
+        border-radius: 50%;
+      }
+
+      // kill the loose-list <p> margins that caused the big vertical gaps
+      p {
+        margin: 0;
+      }
+
+      strong {
+        color: #1D323E;
+        font-weight: 700;
+      }
+    }
+  }
+}
+
+// interactive Dirichlet shrinkage calculator -- same paper-card / teal-rail
+// language as the key-findings callout, one accent (#78B7C5), navy ink
+.penalty-calc {
+  background: #faf8f3; // warm paper
+  border: 1px solid #e9e3d7;
+  border-left: 5px solid #78B7C5; // the one accent, echoed from the callouts
+  border-radius: 4px;
+  padding: 0.85rem 1.05rem 1rem;
+  margin: 1.6rem 0;
+  font-family: "Atkinson Hyperlegible", sans-serif;
+  color: #1D323E;
+
+  .calc-title {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+  }
+
+  // sliders sit beside the triangle; the table spans the full width beneath,
+  // soaking up the leftover whitespace
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 215px 1fr;
+    grid-template-areas:
+      "inputs plot"
+      "out    out";
+    column-gap: 1rem;
+    row-gap: 0.5rem;
+    align-items: center;
+  }
+  .calc-inputs { grid-area: inputs; }
+  .calc-out    { grid-area: out; }
+  .calc-plot   { grid-area: plot; justify-self: center; }
+  .calc-plot svg { display: block; width: 100%; max-width: 320px; height: auto; margin: 0 auto; }
+
+  // full-width custom sliders (no number box / spinner arrows)
+  .calc-inputs .kick-sliders {
+    width: 100%;
+    margin: 0;
+    font-family: "Atkinson Hyperlegible", sans-serif;
+    color: #1D323E;
+  }
+  .calc-inputs .kick-row { margin-bottom: 0.6rem; }
+  .calc-inputs .kick-row label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+  .calc-inputs .kick-val { font-weight: 700; }
+  .calc-inputs .kick-row input[type="range"] {
+    width: 100%;
+    margin: 0;
+    accent-color: #78B7C5; // the one accent
+  }
+
+  // stack on narrow screens
+  @media (max-width: 540px) {
+    .calc-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas: "inputs" "plot" "out";
+    }
+  }
+
+  // table reads as part of the paper card, not a white block on top of it
+  .calc-readout p { margin: 0 0 0.6rem; font-size: 0.9rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.86rem;
+    background: transparent;
+    margin: 0;
+  }
+  th, td {
+    padding: 4px 8px;
+    text-align: right;
+    background: transparent;
+    border: none;
+    color: #1D323E;
+  }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-weight: 600; border-bottom: 1px solid #d9cfbb; }
+  .post-row td {
+    font-weight: 700;
+    border-top: 1px solid #d9cfbb;
+    background: rgba(120, 183, 197, 0.16); // faint Zissou teal, the one accent
+  }
+  // the propagated 90% credible interval, set quietly under each estimate
+  .calc-readout .ci {
+    display: block;
+    font-weight: 400;
+    font-size: 0.78em;
+    color: #6b7a7f;
+    margin-top: 1px;
+    white-space: nowrap;
+  }
+  .calc-readout .calc-note {
+    font-size: 0.78rem;
+    color: #6b7a7f;
+    margin: 0.5rem 0 0;
+  }
+}
