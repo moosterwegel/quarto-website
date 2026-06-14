@@ -66,6 +66,14 @@ $grid-column-gutter-width: 1.5rem;
 $link-color: #5B1317; // "#643D35" "#1D323E" "#5B1317" "#134263" old: #7b292b
 $base-font-size: 16px;
 
+// Keep inline code on a light ground even when the highlight-style is dark
+// (monokai). A newer Quarto started deriving the inline-code background from
+// the dark highlight theme, painting inline code near-black (#2e3440); that
+// dark ground should only apply to code *blocks*. Restoring $code-bg matches
+// the look of older posts (see blog/impute-and-remove-technical-variation-
+// metabolomics): navy #134263 text on a light #f8f9fa ground.
+$code-bg: #f8f9fa;
+
 /*-- scss:rules --*/
 $web-font-path: false;
 
@@ -220,8 +228,14 @@ pre.text, pre.sourceCode, .cell-output pre {
   font-size: 0.65em;
 }
 
-p > code, li > code, span > code {
+// :not(.sourceCode) targets inline code only (never code blocks) and matches
+// the specificity of Quarto's own inline-code rule, so this wins on source
+// order — a guaranteed fallback in case $code-bg above is overridden.
+p > code:not(.sourceCode),
+li > code:not(.sourceCode),
+span > code:not(.sourceCode) {
   color: #134263; // #f5f5f5
+  background-color: #f8f9fa;
   border-radius: 3px;
   padding: 0.15em 0.3em;
   font-size: 0.8em;
