@@ -2,13 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.27">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
 <title>Max Oosterwegel – Max Oosterwegel – blog</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -31,10 +34,10 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-046b0435a46a1ad11510a044160c444e.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-9de9f6925d305bcf5b7eb9351f368d06.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-6ce58c7fb6e0ba74fffc6ff3b626125a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-6028b86867f1e2f13d61e1cf1eaea102.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <link href="site_libs/quarto-contrib/academicons-1.9.4/all.css" rel="stylesheet">
 <link href="site_libs/quarto-contrib/academicons-1.9.4/size.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -119,7 +122,7 @@ ul.task-list li input[type="checkbox"] {
   </div>
 </header> 
       <div class="about-contents"><main class="content" id="quarto-document-content">
-<p>I am a PhD student in environmental epidemiology at the Institute for Risk Assessment Sciences at Utrecht University. In this PhD I work with untargeted / nontargeted metabolomic data to study respiratory health outcomes (think asthma, COPD, lung function) across the life course. This PhD is financed by the EXPANSE and EXPOSOME-NL consortia which are part of a broader effort to systematically characterize the environment and its exposures to humans on a large scale (dubbed the exposome). I originally did my bachelor’s in artificial intelligence and a master in data science before pivoting to (environmental) epidemiology.</p>
+<p>I am a postdoctoral researcher at the International Agency for Research on Cancer (IARC/WHO), where I study (early-onset) colorectal cancer. Before this, I was a PhD student in environmental epidemiology at the Institute for Risk Assessment Sciences at Utrecht University, where I analyzed untargeted metabolomic data to study respiratory health (i.e., asthma and COPD). I originally did my bachelor’s in artificial intelligence and my master’s in data science. The views expressed on this website are solely my own and do not necessarily represent the decisions, policy, or views of IARC or the World Health Organization (WHO).</p>
 
 
 </main></div>
@@ -174,13 +177,14 @@ ul.task-list li input[type="checkbox"] {
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
