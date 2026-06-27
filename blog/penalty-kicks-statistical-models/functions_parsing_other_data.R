@@ -1,6 +1,6 @@
 get_penalty_lineups <- function() {
   nanoparquet::read_parquet(
-    "data/penalties_all_seasons_lineups.parquet"
+    "data/penalty_lineups_ws.parquet"
   ) |>
     dplyr::filter(is_taking_team) |>
     dplyr::select(

@@ -88,13 +88,47 @@ $$
 where $(x_i, y_i)$ is where the ball crosses the goal line and $f_{\text{Left}}$, $f_{\text{Right}}$ are thin-plate spline surfaces fit separately per foot (the `by = kick_foot` term). The index $i$ runs over on-target shots only — scored or saved — since shots that miss or strike the frame are deterministically no-goal and carry no placement information here.
 
 ```{r}
+#| label: snapshot-db
+#| include: false
+# Pull the data this post analyses from the penalty-stats database and write a
+# copy into data/, so the exact data the post was built on is tracked in git.
+local({
+  # Connect using the same PENALTY_DB_DSN the rest of the tooling uses.
+  .dsn <- strsplit(trimws(Sys.getenv("PENALTY_DB_DSN")), "\\s+")[[1]]
+  .v <- function(k) sub(paste0("^", k, "="), "", .dsn[grepl(paste0("^", k, "="), .dsn)])
+  con <- DBI::dbConnect(
+    RPostgres::Postgres(),
+    host = .v("host"), port = as.integer(.v("port")), dbname = .v("dbname"),
+    user = .v("user"), password = .v("password"),
+    # bigint ids (player_id, match_id, ...) default to bit64::integer64, which
+    # nanoparquet writes as raw DOUBLE bytes -> reads back as subnormal garbage
+    # and breaks every id join. Return them as plain numeric.
+    bigint = "numeric"
+  )
+  on.exit(DBI::dbDisconnect(con))
+  dir.create("data", showWarnings = FALSE)
+
+  dplyr::tbl(con, "penalties_ws") |>
+    dplyr::filter(dplyr::sql("match_date::date < '2026-06-01'")) |>
+    dplyr::collect() |>
+    nanoparquet::write_parquet("data/penalties_ws.parquet")
+
+  dplyr::tbl(con, "penalty_lineups_ws") |>
+    # maybe add match_date in new data version, for now it's handled correctly because of joins
+    # dplyr::filter(dplyr::sql("match_date::date < '2026-06-01'")) |>
+    dplyr::collect() |>
+    nanoparquet::write_parquet("data/penalty_lineups_ws.parquet")
+})
+```
+
+```{r}
 #| code-summary: "Read data"
 library(tidyverse)
 source("functions_features.R")
 source("functions_plotting.R")
 
 df_male <- nanoparquet::read_parquet(
-  "data/penalties_all_seasons.parquet"
+  "data/penalties_ws.parquet"
 ) |>
   convert_opta_to_meters() |>
   add_features() |>
@@ -408,8 +442,8 @@ $$
 \begin{aligned}
 \text{WrongWay}_i &\sim \operatorname{Bernoulli}(p_i) \\
 \operatorname{logit}(p_i) &= \beta_0 + u_{\text{taker}[i]} + v_{\text{gk}[i]} \\
-u_j &\sim \operatorname{Normal}(0, \sigma^2_{\text{taker}}), \qquad
-v_k \sim \operatorname{Normal}(0, \sigma^2_{\text{gk}}).
+u_j &\sim \operatorname{Normal}(0, \sigma^2_{\text{taker}}), \quad j = 1, \dots, J_{\text{taker}}, \\
+v_k &\sim \operatorname{Normal}(0, \sigma^2_{\text{gk}}), \quad k = 1, \dots, K_{\text{gk}}.
 \end{aligned}
 $$
 
@@ -687,6 +721,7 @@ table_re <- function(
   rate_label = "Observed %",
   count_label = "Made",
   higher_is_better = TRUE,
+  baseline_prob = NULL,
   page_size = 10,
   accent = "#78B7C5"
 ) {
@@ -722,7 +757,8 @@ table_re <- function(
       player = stringr::str_replace_all(.data[[name_col]], "\\.", " "),
       kicks = n_total,
       made = n_success,
-      obs_rate = n_success / n_total,
+      # never-takers have n_total == 0; show a blank rate rather than NaN%
+      obs_rate = dplyr::if_else(n_total > 0, n_success / n_total, NA_real_),
       dist = dist,
       lo = q025_added,
       mid = median_added,
@@ -752,12 +788,12 @@ table_re <- function(
     max(floor, round(nchar(label) * 7.5) + 30)
   }
 
-  reactable::reactable(
+  tbl_widget <- reactable::reactable(
     tbl,
     defaultSorted = list(rank = "asc"),
     defaultPageSize = page_size,
     showPageSizeOptions = TRUE,
-    pageSizeOptions = c(10, 25, 50, 100),
+    pageSizeOptions = sort(unique(c(page_size, 10, 25, 50, 100))),
     searchable = TRUE,
     resizable = TRUE,
     highlight = TRUE,
@@ -807,6 +843,20 @@ table_re <- function(
       headerStyle = list(borderBottom = paste0("2px solid ", accent))
     )
   )
+
+  if (is.null(baseline_prob)) {
+    return(tbl_widget)
+  }
+  htmltools::browsable(htmltools::tagList(
+    tbl_widget,
+    htmltools::tags$div(
+      style = "font-size: 0.8rem; color: #666; margin-top: 0.4rem;",
+      htmltools::HTML(sprintf(
+        "Dotted line: the average, a baseline rate of %s.",
+        scales::percent(baseline_prob, accuracy = 1)
+      ))
+    )
+  ))
 }
 ```
 
@@ -864,7 +914,8 @@ table_re(
   "taker_name",
   effect_label = "Added wrong-way probability vs. average",
   rate_label = "Wrong-way %",
-  count_label = "Wrong-way"
+  count_label = "Wrong-way",
+  baseline_prob = baseline_prob_ww
 )
 ```
 
@@ -883,7 +934,8 @@ table_re(
   effect_label = "Added wrong-way probability vs. average",
   rate_label = "Wrong-way %",
   count_label = "Wrong-way",
-  higher_is_better = FALSE
+  higher_is_better = FALSE,
+  baseline_prob = baseline_prob_ww
 )
 ```
 
@@ -907,8 +959,8 @@ $$
 \begin{aligned}
 \text{Goal}_i &\sim \operatorname{Bernoulli}(p_i) \\
 \operatorname{logit}(p_i) &= \beta_0 + u_{\text{taker}[i]} + v_{\text{gk}[i]} \\
-u_j &\sim \operatorname{Normal}(0, \sigma^2_{\text{taker}}), \qquad
-v_k \sim \operatorname{Normal}(0, \sigma^2_{\text{gk}}).
+u_j &\sim \operatorname{Normal}(0, \sigma^2_{\text{taker}}), \quad j = 1, \dots, J_{\text{taker}}, \\
+v_k &\sim \operatorname{Normal}(0, \sigma^2_{\text{gk}}), \quad k = 1, \dots, K_{\text{gk}}.
 \end{aligned}
 $$
 
@@ -963,7 +1015,8 @@ table_re(
   "taker_name",
   effect_label = "Added scoring probability vs. average",
   rate_label = "Scored %",
-  count_label = "Scored"
+  count_label = "Scored",
+  baseline_prob = baseline_prob
 )
 ```
 
@@ -999,7 +1052,8 @@ table_re(
   effect_label = "Added scoring probability vs. average",
   rate_label = "Conceded %",
   count_label = "Conceded",
-  higher_is_better = FALSE
+  higher_is_better = FALSE,
+  baseline_prob = baseline_prob
 )
 ```
 
@@ -1045,7 +1099,7 @@ model_df_raw <- lineups_penalties |>
   # events filtered out of df_male -- are dropped explicitly here rather than
   # surviving as NA rows that get implicitly swept out by the slot filters below.
   # relationship = "many-to-one": many lineup players map to a single penalty
-  # event (df_male is unique on match_id x event_id); dplyr errors if violated.
+  # event (df_male is unique on match_id x event_id)
   inner_join(
     df_male |>
       select(
@@ -1179,14 +1233,13 @@ penalty_selection_model <- brm(
 ```
 
 ```{r}
-#| code-summary: wrangle top takers
+#| code-summary: Wrangle top takers
 library(tidybayes)
 
 draws_taker <- spread_draws(
   penalty_selection_model,
   b_isgoal_Intercept,
-  r_player_id__isgoal[player_id, term],
-  ndraws = 1000
+  r_player_id__isgoal[player_id, term]
 ) |>
   filter(term == "Intercept") |>
   mutate(
@@ -1221,8 +1274,11 @@ player_summary <- model_df_england |>
   )
 
 summary_ext <- taker_ranks |>
-  full_join(lineups_penalties |> distinct(player_id, player_name)) |>
-  full_join(player_summary)
+  left_join(
+    model_df_england |> distinct(player_id, player_name),
+    by = "player_id"
+  ) |>
+  left_join(player_summary, by = "player_id")
 
 rho_post <- brms::posterior_summary(
   penalty_selection_model,
@@ -1242,6 +1298,45 @@ worst_taker <- summary_ext |>
   slice(1)
 
 toney <- summary_ext |> filter(str_detect(player_name, "Toney")) |> slice(1)
+```
+
+```{r}
+#| code-summary: "Plot results penalty takers (selection model)"
+#| column: page
+
+taker_ranks_sel <- summary_ext |>
+  filter(!is.na(player_name)) |>
+  transmute(
+    player_name,
+    n_total = n_taken,
+    n_success = n_scored,
+    median_abs,
+    median_added,
+    q025_added,
+    q975_added
+  ) |>
+  arrange(desc(median_abs)) |>
+  mutate(rank = row_number())
+
+# draws_taker is keyed on player_id; attach the name so the sparklines join.
+draws_taker_named <- draws_taker |>
+  left_join(
+    summary_ext |> distinct(player_id, player_name),
+    by = "player_id"
+  )
+
+table_re(
+  taker_ranks_sel,
+  draws_taker_named,
+  "player_name",
+  effect_label = "Added scoring probability vs. average",
+  rate_label = "Scored %",
+  count_label = "Scored",
+  baseline_prob = baseline_conv,
+  # default to the top 5: these estimates lean on the selection model's
+  # extrapolation, so show fewer by default than the firmer tables above.
+  page_size = 5
+)
 ```
 
 In this filtered dataset we see that `r top_taker_name` is still the top penalty taker. However, the bottom part is much more interesting now, as the worst penalty takers are now believed to be those players who had many opportunities but were not selected by themselves or their team in shootouts or during on field penalties. And instead of getting the average conversion rate among penalty takers, we now estimate the average conversion rate among footballers. This is slightly lower, at about `r scales::percent(baseline_conv, accuracy = 1)`, with the worst players expected to convert only around `r scales::percent(worst_taker$median_abs, accuracy = 1)`. Already good takers who were also trusted a lot, like Ivan Toney (took `r toney$n_taken` of `r toney$n_opportunities` opportunities in this dataset), are estimated to be even a bit better now.
@@ -1305,10 +1400,12 @@ A few things are worth noting on this calculation. For example, you could make t
 
 [^difference]: The difference between these proportions and the plot from the [previous post](/blog/penalty-kicks-descriptives/index.qmd) is that that model included all shots, including those that missed the goal, while this model is limited to those shots on goal. 
 
-We can use these estimated $\phi$ and $\boldsymbol{\mu}$ to set up an interactive calculator that quantitatively updates our beliefs on where a player is going to shoot.
+We can use these estimated $\phi$ and $\boldsymbol{\mu}$ to set up an interactive calculator that quantitatively updates our beliefs on where a player is going to shoot.[^ci-llm]
+
+[^ci-llm]: The closed-form expression for the credible intervals was suggested by an LLM, but seems in line with the MCMC output.
 
 ```{r}
-#| echo: false
+#| code-summary: "Calculator: pass the fitted Dirichlet model to OJS"
 # pass the conjugate parameters (global pattern mu and concentration phi) to OJS
 mu_zone <- brms::posterior_epred(
   fit, newdata = data.frame(total_penalty_kicks = 1)
@@ -1339,250 +1436,225 @@ ojs_define(
 ::: {.penalty-calc}
 [Where would this taker's next penalty go?]{.calc-title}
 
-::: {.calc-grid}
-::: {.calc-inputs}
 ```{ojs}
-//| echo: false
-// one viewof returning {dom, non, cen}: full-width sliders, live value beside
-// each label and no number box (hence no spinner arrows)
-viewof kicks = {
+//| code-summary: "Calculator: build the interactive widget"
+penaltyCalc = {
+  const num = (x) => +(Array.isArray(x) ? x[0] : x);
+  const phi = num(phi_cal);
+  const keys = ["Dominant", "Non-dominant", "Centre"];
+  const idx = {Dominant: 0, "Non-dominant": 1, Centre: 2};
+  const muG = {Dominant: num(mu_dom), "Non-dominant": num(mu_non), Centre: num(mu_cen)};
+
+  // Conjugate Dirichlet-multinomial update for a kick vector, with the posterior
+  // uncertainty in (phi, mu) propagated as a mixture of conjugate Dirichlets:
+  // closed-form posterior mean (Mbar) and covariance (Sigma) by total covariance.
+  const computeCalc = (kicks) => {
+    const y = {Dominant: kicks.dom, "Non-dominant": kicks.non, Centre: kicks.cen};
+    const n = kicks.dom + kicks.non + kicks.cen;
+    const w = n / (n + phi);
+    const emp = {};
+    for (const z of keys) emp[z] = n > 0 ? y[z] / n : muG[z];
+
+    const S = phi_draws.length;
+    const Mbar = [0, 0, 0];
+    const ms = new Array(S);
+    const Cw = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let s = 0; s < S; s++) {
+      const a = [
+        phi_draws[s] * mu_dom_draws[s] + y.Dominant,
+        phi_draws[s] * mu_non_draws[s] + y["Non-dominant"],
+        phi_draws[s] * mu_cen_draws[s] + y.Centre
+      ];
+      const a0 = a[0] + a[1] + a[2];
+      const m = [a[0] / a0, a[1] / a0, a[2] / a0];
+      ms[s] = m;
+      const f = 1 / (a0 + 1);
+      for (let i = 0; i < 3; i++) {
+        Mbar[i] += m[i] / S;
+        for (let j = 0; j < 3; j++)
+          Cw[i][j] += ((i === j ? m[i] * (1 - m[i]) : -m[i] * m[j]) * f) / S;
+      }
+    }
+    const Sigma = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++) {
+        let bt = 0;
+        for (let s = 0; s < S; s++) bt += (ms[s][i] - Mbar[i]) * (ms[s][j] - Mbar[j]);
+        Sigma[i][j] = Cw[i][j] + bt / S;
+      }
+    const postMean = {Dominant: Mbar[0], "Non-dominant": Mbar[1], Centre: Mbar[2]};
+    const ci = {};
+    for (const z of keys) {
+      const sd = Math.sqrt(Sigma[idx[z]][idx[z]]);
+      ci[z] = [Math.max(0, postMean[z] - 1.96 * sd), Math.min(1, postMean[z] + 1.96 * sd)];
+    }
+    return {keys, n, w, mu: muG, emp, Sigma, postMean, ci};
+  };
+
+  // Ternary plot: posterior mean (filled dot), 95% credible ellipse, global
+  // split (hollow dot) and the raw record joined by a shrinkage segment.
+  const drawTernary = (calc) => {
+    const {mu, postMean, Sigma} = calc;
+
+    const W = 380, H = 345, padX = 52, padTop = 30, padBot = 38;
+    const corners = {
+      Dominant:       [0, 0],
+      "Non-dominant": [1, 0],
+      Centre:         [0.5, Math.sqrt(3) / 2]
+    };
+    const sx = d3.scaleLinear([0, 1], [padX, W - padX]);
+    const sy = d3.scaleLinear([0, Math.sqrt(3) / 2], [H - padBot, padTop]);
+    const bary = (p, i) =>
+      p.Dominant * corners.Dominant[i] +
+      p["Non-dominant"] * corners["Non-dominant"][i] +
+      p.Centre * corners.Centre[i];
+    const px = (p) => [sx(bary(p, 0)), sy(bary(p, 1))];
+
+    const svg = d3.create("svg")
+        .attr("viewBox", [0, 0, W, H])
+        .attr("width", W).attr("height", H)
+        .attr("font-family", "Atkinson Hyperlegible, sans-serif")
+        .attr("style", "max-width:100%;height:auto;overflow:visible");
+
+    // faint interior gridlines at 25 / 50 / 75 %
+    for (const t of [0.25, 0.5, 0.75]) {
+      const segs = [
+        [{Dominant: t, "Non-dominant": 1 - t, Centre: 0}, {Dominant: t, "Non-dominant": 0, Centre: 1 - t}],
+        [{Dominant: 1 - t, "Non-dominant": t, Centre: 0}, {Dominant: 0, "Non-dominant": t, Centre: 1 - t}],
+        [{Dominant: 1 - t, "Non-dominant": 0, Centre: t}, {Dominant: 0, "Non-dominant": 1 - t, Centre: t}]
+      ];
+      for (const [a, b] of segs) {
+        const A = px(a), B = px(b);
+        svg.append("line")
+           .attr("x1", A[0]).attr("y1", A[1]).attr("x2", B[0]).attr("y2", B[1])
+           .attr("stroke", "#e7e1d4").attr("stroke-width", 1);
+      }
+    }
+
+    // triangle frame
+    const tri = [corners.Dominant, corners["Non-dominant"], corners.Centre]
+      .map(c => [sx(c[0]), sy(c[1])].join(","));
+    svg.append("polygon")
+       .attr("points", tri.join(" "))
+       .attr("fill", "none").attr("stroke", "#1D323E").attr("stroke-width", 1.5);
+
+    // vertex labels -- middle-anchored and inside the viewBox so they never clip
+    for (const [txt, c, dy] of [
+      ["Dominant", corners.Dominant, 20],
+      ["Non-dominant", corners["Non-dominant"], 20],
+      ["Centre", corners.Centre, -11]
+    ]) {
+      svg.append("text")
+         .attr("x", sx(c[0])).attr("y", sy(c[1]) + dy)
+         .attr("text-anchor", "middle").attr("font-size", 12.5)
+         .attr("font-weight", 700).attr("fill", "#1D323E")
+         .text(txt);
+    }
+
+    // 95% credible region: project the propagated 3-simplex covariance to pixels
+    // (A * Sigma * A^T) and draw the ellipse
+    {
+      const cpx = [px({Dominant: 1, "Non-dominant": 0, Centre: 0}),
+                   px({Dominant: 0, "Non-dominant": 1, Centre: 0}),
+                   px({Dominant: 0, "Non-dominant": 0, Centre: 1})];
+      const Ar = [[cpx[0][0], cpx[1][0], cpx[2][0]], [cpx[0][1], cpx[1][1], cpx[2][1]]];
+      const quad = (r, c) => {
+        let v = 0;
+        for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) v += Ar[r][a] * Sigma[a][b] * Ar[c][b];
+        return v;
+      };
+      const cxx = quad(0, 0), cxy = quad(0, 1), cyy = quad(1, 1);
+      const dsc = Math.sqrt(Math.max(0, (cxx - cyy) ** 2 / 4 + cxy * cxy));
+      const l1 = (cxx + cyy) / 2 + dsc, l2 = Math.max(0, (cxx + cyy) / 2 - dsc);
+      const ang = Math.abs(cxy) > 1e-9 ? Math.atan2(l1 - cxx, cxy) : (cxx >= cyy ? 0 : Math.PI / 2);
+      const Mp = px(postMean), kk = 5.991; // chi-square 0.95, 2 dof
+      svg.append("ellipse")
+         .attr("cx", Mp[0]).attr("cy", Mp[1])
+         .attr("rx", Math.sqrt(l1 * kk)).attr("ry", Math.sqrt(l2 * kk))
+         .attr("transform", `rotate(${ang * 180 / Math.PI}, ${Mp[0]}, ${Mp[1]})`)
+         .attr("fill", "rgba(120, 183, 197, 0.18)").attr("stroke", "#78B7C5")
+         .attr("stroke-width", 1).attr("stroke-opacity", 0.55);
+    }
+
+    // shrinkage segment: global -> raw record
+    if (calc.n > 0) {
+      const A = px(mu), B = px(calc.emp);
+      svg.append("line")
+         .attr("x1", A[0]).attr("y1", A[1]).attr("x2", B[0]).attr("y2", B[1])
+         .attr("stroke", "#9aa7ab").attr("stroke-width", 1).attr("stroke-dasharray", "3,3");
+      svg.append("circle").attr("cx", B[0]).attr("cy", B[1]).attr("r", 4)
+         .attr("fill", "#9aa7ab").attr("opacity", 0.85);
+    }
+
+    // global split (hollow)
+    const G = px(mu);
+    svg.append("circle").attr("cx", G[0]).attr("cy", G[1]).attr("r", 5)
+       .attr("fill", "#faf8f3").attr("stroke", "#1D323E").attr("stroke-width", 1.5);
+
+    // shrunken estimate (headline)
+    const P = px(postMean);
+    svg.append("circle").attr("cx", P[0]).attr("cy", P[1]).attr("r", 7)
+       .attr("fill", "#78B7C5").attr("stroke", "#1D323E").attr("stroke-width", 1.2);
+
+    return svg.node();
+  };
+
+  // Readout table: global split, the taker's raw record, and the shrunken
+  // estimate with its 95% credible interval.
+  const drawReadout = (calc) => {
+    const fmt = d3.format(".0%");
+    const k = calc.keys;
+    const mu = calc.mu;
+
+    const cell = (obj, z) => obj === null ? "—" : fmt(obj[z]);
+    const row = (name, obj, cls = "") =>
+      html`<tr class="${cls}"><td>${name}</td>${k.map(z => html`<td>${cell(obj, z)}</td>`)}</tr>`;
+    const postCell = (z) => html`<td>${fmt(calc.postMean[z])}<span class="ci">${fmt(calc.ci[z][0])}–${fmt(calc.ci[z][1])}</span></td>`;
+    return html`<div class="calc-readout">
+      <p>With <b>${calc.n}</b> kick${calc.n === 1 ? "" : "s"} on record, the estimate puts
+         <b>${fmt(calc.w)}</b> of the weight on this taker's own history and
+         <b>${fmt(1 - calc.w)}</b> on the global split.</p>
+      <table>
+        <thead><tr><th></th>${k.map(z => html`<th>${z}</th>`)}</tr></thead>
+        <tbody>
+          ${row("Global split", mu)}
+          ${row("This taker's record", calc.n > 0 ? calc.emp : null)}
+          <tr class="post-row"><td>Shrunken estimate <span class="ci">95% CrI</span></td>${k.map(z => postCell(z))}</tr>
+        </tbody>
+      </table>
+      <p class="calc-note">Dot = posterior mean; the shaded ellipse and the intervals give the 95% credible region, propagating the uncertainty in φ, μ and the taker's own record.</p>
+    </div>`;
+  };
+
+  // sliders: full-width ranges with a live value beside each label
   const mk = (label, value) => {
     const range = html`<input type="range" min="0" max="100" step="1" value="${value}">`;
     const val = html`<span class="kick-val">${value}</span>`;
     const row = html`<div class="kick-row"><label>${label} ${val}</label>${range}</div>`;
-    range.oninput = () => { val.textContent = range.value; };
-    return {range, row};
+    return {range, val, row};
   };
-  const d = mk("Dominant", 3), n = mk("Non-dominant", 3), c = mk("Centre", 3);
-  const form = html`<form class="kick-sliders">${d.row}${n.row}${c.row}</form>`;
-  Object.defineProperty(form, "value", {
-    get: () => ({dom: +d.range.value, non: +n.range.value, cen: +c.range.value})
-  });
-  return form;
-}
-```
-:::
+  const d = mk("Dominant", 3), nd = mk("Non-dominant", 3), ce = mk("Centre", 3);
+  const form = html`<form class="kick-sliders">${d.row}${nd.row}${ce.row}</form>`;
 
-::: {.calc-plot}
-```{ojs}
-//| echo: false
-ternary = {
-  // conjugate update, recomputed locally so this cell renders only the plot
-  const num = (x) => +(Array.isArray(x) ? x[0] : x);
-  const phi = num(phi_cal);
-  const mu = {Dominant: num(mu_dom), "Non-dominant": num(mu_non), Centre: num(mu_cen)};
-  const keys = ["Dominant", "Non-dominant", "Centre"];
-  const y = {Dominant: kicks.dom, "Non-dominant": kicks.non, Centre: kicks.cen};
-  const n = kicks.dom + kicks.non + kicks.cen;
-  const emp = {};
-  for (const k of keys) emp[k] = n > 0 ? y[k] / n : mu[k];
-  const calc = {n, emp};
-
-  // --- propagate posterior uncertainty: the taker's latent preference is a
-  // mixture (over posterior draws of phi, mu) of conjugate Dirichlets, which
-  // has closed-form mean Mbar and covariance Sigma (law of total covariance) ---
-  const S = phi_draws.length;
-  const Mbar = [0, 0, 0];
-  const ms = new Array(S);
-  const Cw = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (let s = 0; s < S; s++) {
-    const a = [
-      phi_draws[s] * mu_dom_draws[s] + y.Dominant,
-      phi_draws[s] * mu_non_draws[s] + y["Non-dominant"],
-      phi_draws[s] * mu_cen_draws[s] + y.Centre
-    ];
-    const a0 = a[0] + a[1] + a[2];
-    const m = [a[0] / a0, a[1] / a0, a[2] / a0];
-    ms[s] = m;
-    const f = 1 / (a0 + 1);
-    for (let i = 0; i < 3; i++) {
-      Mbar[i] += m[i] / S;
-      for (let j = 0; j < 3; j++)
-        Cw[i][j] += ((i === j ? m[i] * (1 - m[i]) : -m[i] * m[j]) * f) / S;
-    }
-  }
-  const Sigma = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (let i = 0; i < 3; i++)
-    for (let j = 0; j < 3; j++) {
-      let bt = 0;
-      for (let s = 0; s < S; s++) bt += (ms[s][i] - Mbar[i]) * (ms[s][j] - Mbar[j]);
-      Sigma[i][j] = Cw[i][j] + bt / S;
-    }
-  const postMean = {Dominant: Mbar[0], "Non-dominant": Mbar[1], Centre: Mbar[2]};
-
-  const W = 380, H = 345, padX = 52, padTop = 30, padBot = 38;
-  const corners = {
-    Dominant:       [0, 0],
-    "Non-dominant": [1, 0],
-    Centre:         [0.5, Math.sqrt(3) / 2]
+  // recompute + redraw the plot and table in place whenever a slider moves
+  const plotCell = html`<div class="calc-plot"></div>`;
+  const outCell = html`<div class="calc-out"></div>`;
+  const update = () => {
+    const calc = computeCalc({dom: +d.range.value, non: +nd.range.value, cen: +ce.range.value});
+    plotCell.replaceChildren(drawTernary(calc));
+    outCell.replaceChildren(drawReadout(calc));
   };
-  const sx = d3.scaleLinear([0, 1], [padX, W - padX]);
-  const sy = d3.scaleLinear([0, Math.sqrt(3) / 2], [H - padBot, padTop]);
-  const bary = (p, i) =>
-    p.Dominant * corners.Dominant[i] +
-    p["Non-dominant"] * corners["Non-dominant"][i] +
-    p.Centre * corners.Centre[i];
-  const px = (p) => [sx(bary(p, 0)), sy(bary(p, 1))];
+  for (const s of [d, nd, ce])
+    s.range.oninput = () => { s.val.textContent = s.range.value; update(); };
+  update();
 
-  const svg = d3.create("svg")
-      .attr("viewBox", [0, 0, W, H])
-      .attr("width", W).attr("height", H)
-      .attr("font-family", "Atkinson Hyperlegible, sans-serif")
-      .attr("style", "max-width:100%;height:auto;overflow:visible");
-
-  // faint interior gridlines at 25 / 50 / 75 %
-  for (const t of [0.25, 0.5, 0.75]) {
-    const segs = [
-      [{Dominant: t, "Non-dominant": 1 - t, Centre: 0}, {Dominant: t, "Non-dominant": 0, Centre: 1 - t}],
-      [{Dominant: 1 - t, "Non-dominant": t, Centre: 0}, {Dominant: 0, "Non-dominant": t, Centre: 1 - t}],
-      [{Dominant: 1 - t, "Non-dominant": 0, Centre: t}, {Dominant: 0, "Non-dominant": 1 - t, Centre: t}]
-    ];
-    for (const [a, b] of segs) {
-      const A = px(a), B = px(b);
-      svg.append("line")
-         .attr("x1", A[0]).attr("y1", A[1]).attr("x2", B[0]).attr("y2", B[1])
-         .attr("stroke", "#e7e1d4").attr("stroke-width", 1);
-    }
-  }
-
-  // triangle frame
-  const tri = [corners.Dominant, corners["Non-dominant"], corners.Centre]
-    .map(c => [sx(c[0]), sy(c[1])].join(","));
-  svg.append("polygon")
-     .attr("points", tri.join(" "))
-     .attr("fill", "none").attr("stroke", "#1D323E").attr("stroke-width", 1.5);
-
-  // vertex labels -- middle-anchored and inside the viewBox so they never clip
-  for (const [txt, c, dy] of [
-    ["Dominant", corners.Dominant, 20],
-    ["Non-dominant", corners["Non-dominant"], 20],
-    ["Centre", corners.Centre, -11]
-  ]) {
-    svg.append("text")
-       .attr("x", sx(c[0])).attr("y", sy(c[1]) + dy)
-       .attr("text-anchor", "middle").attr("font-size", 12.5)
-       .attr("font-weight", 700).attr("fill", "#1D323E")
-       .text(txt);
-  }
-
-  // 95% credible region for the latent preference: project the propagated
-  // 3-simplex covariance to pixels (A * Sigma * A^T) and draw the ellipse
-  {
-    const cpx = [px({Dominant: 1, "Non-dominant": 0, Centre: 0}),
-                 px({Dominant: 0, "Non-dominant": 1, Centre: 0}),
-                 px({Dominant: 0, "Non-dominant": 0, Centre: 1})];
-    const Ar = [[cpx[0][0], cpx[1][0], cpx[2][0]], [cpx[0][1], cpx[1][1], cpx[2][1]]];
-    const quad = (r, c) => {
-      let v = 0;
-      for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) v += Ar[r][a] * Sigma[a][b] * Ar[c][b];
-      return v;
-    };
-    const cxx = quad(0, 0), cxy = quad(0, 1), cyy = quad(1, 1);
-    const dsc = Math.sqrt(Math.max(0, (cxx - cyy) ** 2 / 4 + cxy * cxy));
-    const l1 = (cxx + cyy) / 2 + dsc, l2 = Math.max(0, (cxx + cyy) / 2 - dsc);
-    const ang = Math.abs(cxy) > 1e-9 ? Math.atan2(l1 - cxx, cxy) : (cxx >= cyy ? 0 : Math.PI / 2);
-    const Mp = px(postMean), kk = 5.991; // chi-square 0.95, 2 dof
-    svg.append("ellipse")
-       .attr("cx", Mp[0]).attr("cy", Mp[1])
-       .attr("rx", Math.sqrt(l1 * kk)).attr("ry", Math.sqrt(l2 * kk))
-       .attr("transform", `rotate(${ang * 180 / Math.PI}, ${Mp[0]}, ${Mp[1]})`)
-       .attr("fill", "rgba(120, 183, 197, 0.18)").attr("stroke", "#78B7C5")
-       .attr("stroke-width", 1).attr("stroke-opacity", 0.55);
-  }
-
-  // shrinkage segment: global -> raw record
-  if (calc.n > 0) {
-    const A = px(mu), B = px(calc.emp);
-    svg.append("line")
-       .attr("x1", A[0]).attr("y1", A[1]).attr("x2", B[0]).attr("y2", B[1])
-       .attr("stroke", "#9aa7ab").attr("stroke-width", 1).attr("stroke-dasharray", "3,3");
-    svg.append("circle").attr("cx", B[0]).attr("cy", B[1]).attr("r", 4)
-       .attr("fill", "#9aa7ab").attr("opacity", 0.85);
-  }
-
-  // global split (hollow)
-  const G = px(mu);
-  svg.append("circle").attr("cx", G[0]).attr("cy", G[1]).attr("r", 5)
-     .attr("fill", "#faf8f3").attr("stroke", "#1D323E").attr("stroke-width", 1.5);
-
-  // shrunken estimate (headline)
-  const P = px(postMean);
-  svg.append("circle").attr("cx", P[0]).attr("cy", P[1]).attr("r", 7)
-     .attr("fill", "#78B7C5").attr("stroke", "#1D323E").attr("stroke-width", 1.2);
-
-  return svg.node();
-}
-```
-:::
-
-::: {.calc-out}
-```{ojs}
-//| echo: false
-readout = {
-  // conjugate update, recomputed locally so this cell renders only the table
-  const num = (x) => +(Array.isArray(x) ? x[0] : x);
-  const phi = num(phi_cal);
-  const mu = {Dominant: num(mu_dom), "Non-dominant": num(mu_non), Centre: num(mu_cen)};
-  const fmt = d3.format(".0%");
-  const keys = ["Dominant", "Non-dominant", "Centre"];
-  const y = {Dominant: kicks.dom, "Non-dominant": kicks.non, Centre: kicks.cen};
-  const n = kicks.dom + kicks.non + kicks.cen;
-  const w = n / (n + phi);
-  const emp = {};
-  for (const z of keys) emp[z] = n > 0 ? y[z] / n : mu[z];
-
-  // propagate posterior uncertainty (mixture of conjugate Dirichlets over the
-  // posterior draws): closed-form posterior mean and 95% credible interval
-  const S = phi_draws.length;
-  const idx = {Dominant: 0, "Non-dominant": 1, Centre: 2};
-  const Mbar = [0, 0, 0], within = [0, 0, 0], mm = new Array(S);
-  for (let s = 0; s < S; s++) {
-    const a = [
-      phi_draws[s] * mu_dom_draws[s] + y.Dominant,
-      phi_draws[s] * mu_non_draws[s] + y["Non-dominant"],
-      phi_draws[s] * mu_cen_draws[s] + y.Centre
-    ];
-    const a0 = a[0] + a[1] + a[2], m = [a[0] / a0, a[1] / a0, a[2] / a0];
-    mm[s] = m;
-    for (let i = 0; i < 3; i++) {
-      Mbar[i] += m[i] / S;
-      within[i] += (m[i] * (1 - m[i]) / (a0 + 1)) / S;
-    }
-  }
-  const post = {}, ci = {};
-  for (const z of keys) {
-    const i = idx[z];
-    let bt = 0;
-    for (let s = 0; s < S; s++) bt += (mm[s][i] - Mbar[i]) ** 2;
-    const sd = Math.sqrt(within[i] + bt / S);
-    post[z] = Mbar[i];
-    ci[z] = [Math.max(0, Mbar[i] - 1.96 * sd), Math.min(1, Mbar[i] + 1.96 * sd)];
-  }
-  const calc = {keys, n, w, emp, post, ci};
-
-  const k = calc.keys;
-  const cell = (obj, z) => obj === null ? "—" : fmt(obj[z]);
-  const row = (name, obj, cls = "") =>
-    html`<tr class="${cls}"><td>${name}</td>${k.map(z => html`<td>${cell(obj, z)}</td>`)}</tr>`;
-  const postCell = (z) => html`<td>${fmt(calc.post[z])}<span class="ci">${fmt(calc.ci[z][0])}–${fmt(calc.ci[z][1])}</span></td>`;
-  return html`<div class="calc-readout">
-    <p>With <b>${calc.n}</b> kick${calc.n === 1 ? "" : "s"} on record, the estimate puts
-       <b>${fmt(calc.w)}</b> of the weight on this taker's own history and
-       <b>${fmt(1 - calc.w)}</b> on the global split.</p>
-    <table>
-      <thead><tr><th></th>${k.map(z => html`<th>${z}</th>`)}</tr></thead>
-      <tbody>
-        ${row("Global split", mu)}
-        ${row("This taker's record", calc.n > 0 ? calc.emp : null)}
-        <tr class="post-row"><td>Shrunken estimate <span class="ci">95% CrI</span></td>${k.map(z => postCell(z))}</tr>
-      </tbody>
-    </table>
-    <p class="calc-note">Dot = posterior mean; the shaded ellipse and the intervals give the 95% credible region, propagating the uncertainty in φ, μ and the taker's own record.</p>
+  return html`<div class="calc-grid">
+    <div class="calc-inputs">${form}</div>
+    ${plotCell}
+    ${outCell}
   </div>`;
 }
 ```
-:::
-:::
 :::
 
 We can take our Dirichlet model a step further and let each taker have their own placement preference instead of sharing the single global one, by adding a per-taker random intercept:
