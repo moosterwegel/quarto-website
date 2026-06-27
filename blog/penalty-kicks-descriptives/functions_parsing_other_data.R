@@ -1,6 +1,6 @@
 get_df_most_common_position <- function() {
   nanoparquet::read_parquet(
-    "data/lineups_all_seasons.parquet"
+    "data/lineups_ws.parquet"
   ) |>
     dplyr::group_by(player_id, position) |>
     dplyr::tally() |>

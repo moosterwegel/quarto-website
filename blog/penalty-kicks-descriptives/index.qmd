@@ -64,6 +64,39 @@ While data and knowledge about the specific behaviours of penalty takers and goa
 ## What data do we have?
 ::: {.column-page}
 ```{r}
+#| label: snapshot-db
+#| include: false
+# Pull the data this post analyses from the penalty-stats database and write a
+# copy into data/, so the exact data the post was built on is tracked in git.
+local({
+  # Connect using the same PENALTY_DB_DSN the rest of the tooling uses.
+  .dsn <- strsplit(trimws(Sys.getenv("PENALTY_DB_DSN")), "\\s+")[[1]]
+  .v <- function(k) sub(paste0("^", k, "="), "", .dsn[grepl(paste0("^", k, "="), .dsn)])
+  con <- DBI::dbConnect(
+    RPostgres::Postgres(),
+    host = .v("host"), port = as.integer(.v("port")), dbname = .v("dbname"),
+    user = .v("user"), password = .v("password"),
+    # bigint ids (player_id, match_id, ...) default to bit64::integer64, which
+    # nanoparquet writes as raw DOUBLE bytes -> reads back as subnormal garbage
+    # and breaks every id join. Return them as plain numeric so they round-trip.
+    bigint = "numeric"
+  )
+  on.exit(DBI::dbDisconnect(con))
+  dir.create("data", showWarnings = FALSE)
+
+  dplyr::tbl(con, "penalties_ws") |>
+    dplyr::filter(dplyr::sql("match_date::date < '2026-06-01'")) |>
+    dplyr::collect() |>
+    nanoparquet::write_parquet("data/penalties_ws.parquet")
+
+  dplyr::tbl(con, "lineups_ws") |>
+    dplyr::filter(dplyr::sql("match_date::date < '2026-06-01'")) |>
+    dplyr::collect() |>
+    nanoparquet::write_parquet("data/lineups_ws.parquet")
+})
+```
+
+```{r}
 #| fig-height: 8
 #| fig-width: 14
 #| out-width: "100%"
@@ -231,7 +264,7 @@ placement_gradient_table <- function(data, group, group_label) {
 }
 
 df <- nanoparquet::read_parquet(
-  "data/penalties_all_seasons.parquet"
+  "data/penalties_ws.parquet"
 ) |>
   convert_opta_to_meters() |>
   add_features()
@@ -454,7 +487,7 @@ So even among the players who have taken a penalty in this dataset, most have ta
 ## And what proportion of players takes a penalty?
 ```{r}
 starting_lineups <- nanoparquet::read_parquet(
-  "data/lineups_all_seasons.parquet"
+  "data/lineups_ws.parquet"
 ) |>  filter(is_first_eleven)
 
 starting_player_ids <- starting_lineups |>

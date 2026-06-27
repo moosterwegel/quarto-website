@@ -140,8 +140,8 @@ add_features <- function(data) {
         TRUE ~ FALSE
       ),
       gk_wrong_way = !gk_correct,
-      time_since_start = lubridate::minutes(expanded_minute) +
-        lubridate::seconds(second),
+      time_since_start = lubridate::minutes(as.integer(expanded_minute)) +
+        lubridate::seconds(as.integer(second)),
       ## Strictly past the 90:00 mark in the second half (e.g. 90:30 is TRUE,
       ## 90:00 is FALSE). Extra time and shoot-outs are not counted as added time.
       is_second_half_added_time = period == "SecondHalf" &
