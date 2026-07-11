@@ -1779,4 +1779,9 @@ reactable::reactable(
 )
 ```
 
+# Epilogue
+After writing these blog posts, I realized that -- by modeling the skills as posterior distributions -- our taker and goalkeeper skill estimates enable at least two more useful things. First, we may want to compare two players and quantify the chance that one is the better taker or goalkeeper than the other. We can do this by simply comparing each of the draws of the posterior distribution between the players. The proportion of draws where the skill estimate of player A is higher than player B corresponds to our quantified belief that player A is the better penalty taker or goalkeeper than player B. Or more accurately, that player A _has been_ better than player B as we model performance to date, not necessarily future skill.
 
+Second, this same posterior distribution lets us simulate entire shootouts between two sets of players: draw from each player's posterior and use the results in a Monte Carlo simulation. Besides being fun, it can provide an answer to what matters more in a shootout: good takers or good goalkeepers. Would you rather have one Tim Melia or 10 Harry Kanes (like) players during your shootout?[^spoiler]
+
+[^spoiler]: You want a good goalkeeper based on my simulations. I think we could also have inferred that from the skill estimates themselves as the best goalkeepers prevent more expected goals than the best takers add (compared to the average takers/goalkeepers). 
