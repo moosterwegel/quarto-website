@@ -186,6 +186,25 @@ main.content#quarto-document-content {
   padding-top: 0 !important;
 }
 
+// remove whitespace below table listing page. Two separate causes, both scoped
+// to the landing page via the body-classes: home set in index.qmd:
+//   1. the content grid reserves an empty 60px row between [content-bottom] and
+//      [page-bottom] -- the bulk of the gap at any normal zoom level;
+//   2. min-height: calc(100vh - 132px) parks the footer at the bottom of the
+//      screen. It does not bite at 100% zoom (the table is taller), but zooming
+//      out grows the viewport in CSS px while the table stays put, and the
+//      surplus turns into whitespace.
+// !important is required: Quarto's own rules win the cascade otherwise.
+body.home {
+  .quarto-container {
+    min-height: 0 !important;
+  }
+
+  #quarto-content.page-rows-contents {
+    grid-template-rows: [content-top] max-content [content-bottom] 0 [page-bottom] !important;
+  }
+}
+
 // meta info article one line
 #title-block-header.quarto-title-block.default .quarto-title-meta {
   display: grid;

@@ -13,4 +13,5 @@ listing:
 title-block-banner: false
 title-block-style: none
 title: ""
+body-classes: home
 ---
