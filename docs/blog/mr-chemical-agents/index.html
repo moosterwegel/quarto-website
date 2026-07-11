@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.27">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -11,6 +11,9 @@
 
 <title>Can we use mendelian randomization to learn about the causal effects of chemical exposures on our health? – Max Oosterwegel – blog</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -54,10 +57,10 @@ div.csl-indent {
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-046b0435a46a1ad11510a044160c444e.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-9de9f6925d305bcf5b7eb9351f368d06.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-6ce58c7fb6e0ba74fffc6ff3b626125a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-6028b86867f1e2f13d61e1cf1eaea102.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/all.css" rel="stylesheet">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/size.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -198,12 +201,12 @@ X -&gt; Y
 <h1>MR</h1>
 <p>MR uses instrumental variables to estimate causal effects for exposures on health and other personal outcomes. More specifically, MR uses the fact that conditional on parental genotypes, alleles are randomly allocated from parents to offspring.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> If we can find alleles that are reliably related to our exposure of interest, we can – under strict assumptions (Box 1) – use the random assignment of this gene as an instrument to infer the causal effect of an exposure on an outcome.</p>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Box 1: MR assumptions
+<span class="screen-reader-only">Note</span>Box 1: MR assumptions
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
@@ -236,12 +239,12 @@ Box 1: MR assumptions
 <h1>Gene-environment interactions</h1>
 <p>The papers on sheep dip and smoking did not mention MR. If placed in a general framework, it’s usually gene-environment interaction, not MR. However, we can think of many of these genetic instruments in MR as a gene-environment interaction.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> Ideally, this would be a gene-environment interaction without an independent gene effect. In other words, the association of the gene with the outcome is only visible in the presence of the exposure. These gene-environment interactions affect metabolism of exposure<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> by affecting absorption, distribution, metabolism, and excretion (ADME) characteristics of the targeted exposure (<span class="citation" data-cites="ritz_lessons_2017">Ritz et al. (<a href="#ref-ritz_lessons_2017" role="doc-biblioref">2017</a>)</span>). Thereby, they affect the susceptibility of an individual and can serve as a proxy for internal exposure to the environmental exposure of interest which – in exposure assessment and epidemiology – is ultimately what we care about.</p>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Box 2: Metabolism of environmental chemicals
+<span class="screen-reader-only">Note</span>Box 2: Metabolism of environmental chemicals
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
@@ -285,12 +288,12 @@ CYP1A1 -&gt; "metabolism of Tetradioxin"
 </div>
 <p>Nevertheless, I think such approaches can play a role in evidence synthesis of environmental chemicals: the sources of bias are generally different from the more common epidemiological studies and as such they could be used in triangulation. Put differently, the confounding effect of the metabolizing gene will likely be different than if we were to directly study the environmental exposure. Moreover, sometimes it just takes a while to find suitable instruments<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a>. For example, it took years to find a likely valid instrument for circulating vitamin C levels (<span class="citation" data-cites="smith_mendelian_2010">Smith (<a href="#ref-smith_mendelian_2010" role="doc-biblioref">2010</a>)</span>). Although it’s important to note that functional polymorphisms may not exist in many cases (<span class="citation" data-cites="weiss_how_2000">Weiss and Terwilliger (<a href="#ref-weiss_how_2000" role="doc-biblioref">2000</a>)</span>).</p>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Box 3: Screening for associations with ‘environmentally sensitive genes’ in 2025
+<span class="screen-reader-only">Note</span>Box 3: Screening for associations with ‘environmentally sensitive genes’ in 2025
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
@@ -306,12 +309,12 @@ Box 3: Screening for associations with ‘environmentally sensitive genes’ in 
 <p>So strictly speaking we do not even need measurement of exposures to do MR, but I think such measurements will nonetheless be useful in understanding the environmental response machinery as MR is most useful in evidence synthesis if the mechanism of association of the polymorphisms with the exposure (metabolism) is well-understood. Namely, biological knowledge is needed to know that the genes themselves do not cause disease, and if metabolism of other exposures is related to the gene or disease. Measurements of exposures can be useful in both cases: we can test for an association in the absence of exposure<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a>, and we can of course use the exposure data to search for new candidate instruments, thereby generating useful biological information beyond the dominant in vitro studies used to select many environmentally sensitive candidate genes in the past.<a href="#fn12" class="footnote-ref" id="fnref12" role="doc-noteref"><sup>12</sup></a></p>
 <p>Past studies that incorporated chemical exposure have used classical job exposure matrices (JEMs) (e.g. <span class="citation" data-cites="quintero_santofimio_geneoccupational_2025">Quintero Santofimio et al. (<a href="#ref-quintero_santofimio_geneoccupational_2025" role="doc-biblioref">2025</a>)</span>) and existing studies could use high-throughput biomarkers. Of note here is the difference in measurement error structure between these exposure assessment methods: biomarkers typically have a classical error structure that dilutes effects towards the null and reduces statistical power, whereas JEMs – that assess exposure at the group level – mostly involve Berkson’s error, which does (in the general case) not bias estimates but instead reduces their precision. These differences could have implications for the design and merit of these studies for evidence synthesis.</p>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Box 4: Not all biomarkers are the same: choosing the right biomarker
+<span class="screen-reader-only">Note</span>Box 4: Not all biomarkers are the same: choosing the right biomarker
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
@@ -429,7 +432,7 @@ Westerman, Kenneth E., and Tamar Sofer. 2024. <span>“Many Roads to a Gene-Envi
 <li id="fn1"><p>In non-familial studies (which are dominant in the literature due to data limitations) this is better described as ‘approximate MR’ (<span class="citation" data-cites="davey_smith_mendelian_2003">Davey Smith and Ebrahim (<a href="#ref-davey_smith_mendelian_2003" role="doc-biblioref">2003</a>)</span>). And the (implicit) verdict seems to be that this is good enough, although it is at risk of potential biases from dynastic effects, population structure, and assortative mating (<span class="citation" data-cites="davies_within_2019">Davies et al. (<a href="#ref-davies_within_2019" role="doc-biblioref">2019</a>)</span>, <span class="citation" data-cites="tudball_almost_2023">Tudball, Smith, and Zhao (<a href="#ref-tudball_almost_2023" role="doc-biblioref">2023</a>)</span>, <span class="citation" data-cites="smith_clustered_2007">Smith et al. (<a href="#ref-smith_clustered_2007" role="doc-biblioref">2007</a>)</span>).<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>This showed a null association and in general, MR has been most useful to show null effects whereas classical observational studies showed consistent (confounded) effect sizes.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>Another instance of a violation of gene-environment equivalence is canalization where the body develops compensatory pathways to mitigate the effects of genetic or environmental variations during development. For example, an individual with a genetic predisposition to high levels of a particular substance from birth might develop resistance to its effects, which would not be the case for someone whose levels of that substance increase later in life due to environmental factors. Whether canalization occurs widely is unknown (<span class="citation" data-cites="kodali_effects_2018">Kodali, Pavilonis, and Schooling (<a href="#ref-kodali_effects_2018" role="doc-biblioref">2018</a>)</span>).<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>GD Smith referred to many studies that carry out MR for GWAS hits for such exposures without gene-environment equivalency as ’<a href="https://www.youtube.com/watch?v=jQmlba_B_lg">noodles’</a> : they will find genetic correlates of noodle eating but this does not instrument a specific taste for noodles that causes them to eat more noodles. You’re just looking at upstream factors instead. (Related GD Smith presentation in better quality available <a href="https://www.youtube.com/watch?v=NTZ0imjoH2w">here</a>)<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>GD Smith referred to many studies that carry out MR for GWAS hits for such exposures without gene-environment equivalency as ‘<a href="https://www.youtube.com/watch?v=jQmlba_B_lg">noodles’</a> : they will find genetic correlates of noodle eating but this does not instrument a specific taste for noodles that causes them to eat more noodles. You’re just looking at upstream factors instead. (Related GD Smith presentation in better quality available <a href="https://www.youtube.com/watch?v=NTZ0imjoH2w">here</a>)<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>These tests can be seen as an analogue to intent-to-treat analysis in RCTs.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>As <span class="citation" data-cites="vanderweele_methodological_2014">VanderWeele et al. (<a href="#ref-vanderweele_methodological_2014" role="doc-biblioref">2014</a>)</span> notes, gene-environment interactions depend on the definition of exposure. For example, the genes used to study bladder cancer cause you to extract more toxins per cigarette and as such amplify the effect of each cigarette smoked. If we define the exposure as pack-years there is a gene-environment interaction. However, if we define the exposure as all aspects of smoking behavior including the metabolism of toxins there is not a gene-environment interaction. Note also how the paper on arsenic talks about arsenic metabolism instead of arsenic.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn7"><p>Other terms I encountered in the literature that describe the same or closely related phenomena (or which are useful terms for finding related literature): environmental response machinery, environmental response/sensitive genes, reduced detoxification, slow-metabolizer variants, poor/extensive metabolizer, toxicogenetics, precision environmental medicine.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
@@ -506,13 +509,14 @@ Health?”</span> October 31. doi:<a href="https://doi.org/placeholder">placehol
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
@@ -854,10 +858,35 @@ Health?”</span> October 31. doi:<a href="https://doi.org/placeholder">placehol
     }
   });
   </script>
-<script src="https://giscus.app/client.js" data-repo="moosterwegel/quarto-website" data-repo-id="R_kgDOOdS7PA" data-category="Announcements" data-category-id="DIC_kwDOOdS7PM4CpUdv" data-mapping="title" data-reactions-enabled="1" data-emit-metadata="0" data-input-position="top" data-theme="light" data-lang="en" crossorigin="anonymous" async="">
-</script>
 <input type="hidden" id="giscus-base-theme" value="light">
 <input type="hidden" id="giscus-alt-theme" value="dark">
+<script>
+  function loadGiscus() {
+    // Function to get the theme based on body class
+    const getTheme = () => {
+      let baseTheme = document.getElementById('giscus-base-theme').value;
+      let altTheme = document.getElementById('giscus-alt-theme').value;
+      return document.body.classList.contains('quarto-dark') ? altTheme : baseTheme;
+    };
+    const script = document.createElement("script");
+    script.src = "https://giscus.app/client.js";
+    script.async = true;
+    script.dataset.repo = "moosterwegel/quarto-website";
+    script.dataset.repoId = "R_kgDOOdS7PA";
+    script.dataset.category = "Announcements";
+    script.dataset.categoryId = "DIC_kwDOOdS7PM4CpUdv";
+    script.dataset.mapping = "title";
+    script.dataset.reactionsEnabled = "1";
+    script.dataset.emitMetadata = "0";
+    script.dataset.inputPosition = "top";
+    script.dataset.theme = getTheme();
+    script.dataset.lang = "en";
+    script.crossOrigin = "anonymous";
+    // Append the script to the desired div instead of at the end of the body
+    document.getElementById("quarto-content").appendChild(script);
+  }
+  loadGiscus();
+</script>
 </div> <!-- /content -->
 <footer class="footer">
   <div class="nav-footer">

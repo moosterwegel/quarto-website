@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.27">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -11,6 +11,9 @@
 
 <title>Exploring within-person biomarker variability interactively – Max Oosterwegel – blog</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -69,10 +72,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-985aa47af68dae11cd4d235c71fb941e.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-cee66dfb3f313cfc5993c50ad55799d4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-47acccfff281292c6a4f0b054d9fccbe.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/all.css" rel="stylesheet">
 <link href="../../site_libs/quarto-contrib/academicons-1.9.4/size.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -94,7 +97,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-ojs/quarto-ojs.css" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <script type="text/javascript">
 const typesetMath = (el) => {
@@ -107,7 +110,7 @@ const typesetMath = (el) => {
     var macros = [];
     for (var i = 0; i < mathElements.length; i++) {
       var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
         window.katex.render(texText.data, mathElements[i], {
           displayMode: mathElements[i].classList.contains('display'),
           throwOnError: false,
@@ -223,7 +226,7 @@ window.Quarto = {
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb1" data-startfrom="14" data-source-offset="-0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 13;"><span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>d3 <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3"</span>)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" data-startfrom="14" data-source-offset="-0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 13;"><span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>d3 <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3"</span>)</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>{</span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">// --- Main Layout Creation ---</span></span>
@@ -469,7 +472,7 @@ window.Quarto = {
 <span id="cb1-257"><a href="#cb1-257" aria-hidden="true" tabindex="-1"></a>  <span class="fu">updateVisualization</span>()<span class="op">;</span></span>
 <span id="cb1-258"><a href="#cb1-258" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-259"><a href="#cb1-259" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> container<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
-<span id="cb1-260"><a href="#cb1-260" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-260"><a href="#cb1-260" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display">
 <div>
@@ -493,7 +496,7 @@ window.Quarto = {
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Educational insights
+<span class="screen-reader-only">Tip</span>Educational insights
 </div>
 </div>
 <div class="callout-body-container callout-body">
@@ -556,7 +559,7 @@ Details
 <p>First, the model assumes chemicals enter and exit the body instantly and completely and do so through a single route, but actual ADME processes (<u>Absorption</u>, <u>Distribution</u>, <u>Metabolism</u>, <u>Excretion</u>) involve multiple, complex routes and physical barriers following exposure. Namely, as a result of the gut wall, skin, and lungs <u>absorption</u> takes time, and the amount of a chemical that makes it into the bloodstream (its bioavailability) after exposure is rarely 100%. For example, <em>inhaled</em> chemicals bypass the liver and enter arterial blood directly, giving them immediate access to sensitive organs like the brain and heart. <em>Ingested</em> substances, on the other hand, first pass through the liver, where enzymes can partially destroy (= first-pass effect) them before they ever reach general circulation. <em>Skin absorption</em> follows yet another route by delivering chemicals into venous blood. Each route creates different kinetic patterns that our single-compartment model does not capture.</p>
 <p>Second, once <u>absorbed</u>, chemicals do not <u>distribute</u> uniformly throughout the body as the model assumes. The circulatory system <u>transports</u> substances unevenly, and chemicals partition between blood and tissues based on blood flow, tissue composition, and the chemical’s own properties. For example, lipophilic (lipid-soluble) compounds like PCBs and DDT (but also some vitamins) concentrate heavily in fatty tissues, while water-soluble substances like carbohydrates and amino acids remain largely in blood and other body water. This partitioning creates multiple body reservoirs/compartments with vastly different uptake and release rates that our model cannot capture. Specifically, partitioning can create a two-phased elimination pattern with rapid initial <u>clearance</u> from blood and organs, followed by very slow release from fat stores. During periods of weight loss or metabolic stress, stored chemicals can remobilize and create concentration spikes in circulation, causing internal re-exposure long after external exposure has ceased. The single-compartment model does not show these dynamic phases caused by such interplay between storage and release.</p>
 <p>Lastly, the model assumes elimination (which includes both <u>metabolism</u> and <u>excretion</u>) occurs at a fixed, predictable rate. However, this assumption can break down at high exposure levels when metabolic systems become saturated. Namely, biotransformation systems in the liver such as the Cytochrome P450 enzymes - which can either detoxify substances or convert them into more harmful metabolites - have a finite capacity that when exceeded, results in lower elimination rates. Such a state is better described by so called zero-order kinetics (Michaelis-Menten kinetics), where a constant amount is eliminated per unit time, regardless of how high the concentration gets. In the end, such a violation of our first-order kinetics assumption means that chemicals can persist longer in the body than predicted at very higher exposure/concentration levels by our model.</p>
-<p>And in reality, all of these ‘parameters’ can differ from person to person.. that may sound hopeless but in some cases this variation between people can enable better causal inferences on the health effects of chemicals through <a href="../..\blog/mr-chemical-agents/index.html">mendelian randomization</a>!</p>
+<p>And in reality, all of these ‘parameters’ can differ from person to person.. that may sound hopeless but in some cases this variation between people can enable better causal inferences on the health effects of chemicals through <a href="blog/mr-chemical-agents/index.html">mendelian randomization</a>!</p>
 </details>
 </section>
 <section id="future-stuff" class="level2 page-columns page-full">
@@ -572,7 +575,7 @@ Originally, I wanted to create this little interactive visualization to illustra
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb2" data-startfrom="342" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 341;"><span id="cb2-342"><a href="#cb2-342" aria-hidden="true" tabindex="-1"></a>{</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2" data-startfrom="342" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 341;"><span id="cb2-342"><a href="#cb2-342" aria-hidden="true" tabindex="-1"></a>{</span>
 <span id="cb2-343"><a href="#cb2-343" aria-hidden="true" tabindex="-1"></a>  <span class="co">// --- Main Layout Creation ---</span></span>
 <span id="cb2-344"><a href="#cb2-344" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> container <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
 <span id="cb2-345"><a href="#cb2-345" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"font-family"</span><span class="op">,</span> <span class="st">"Inter, sans-serif"</span>)</span>
@@ -805,7 +808,7 @@ Originally, I wanted to create this little interactive visualization to illustra
 <span id="cb2-572"><a href="#cb2-572" aria-hidden="true" tabindex="-1"></a>  <span class="fu">updateVisualization</span>()<span class="op">;</span></span>
 <span id="cb2-573"><a href="#cb2-573" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-574"><a href="#cb2-574" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> container<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
-<span id="cb2-575"><a href="#cb2-575" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-575"><a href="#cb2-575" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-2" data-nodetype="expression">
@@ -882,13 +885,14 @@ window._ojs.runtime.interpretFromScriptTags();
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
@@ -1230,10 +1234,35 @@ window._ojs.runtime.interpretFromScriptTags();
     }
   });
   </script>
-<script src="https://giscus.app/client.js" data-repo="moosterwegel/quarto-website" data-repo-id="R_kgDOOdS7PA" data-category="Announcements" data-category-id="DIC_kwDOOdS7PM4CpUdv" data-mapping="title" data-reactions-enabled="1" data-emit-metadata="0" data-input-position="top" data-theme="light" data-lang="en" crossorigin="anonymous" async="">
-</script>
 <input type="hidden" id="giscus-base-theme" value="light">
 <input type="hidden" id="giscus-alt-theme" value="dark">
+<script>
+  function loadGiscus() {
+    // Function to get the theme based on body class
+    const getTheme = () => {
+      let baseTheme = document.getElementById('giscus-base-theme').value;
+      let altTheme = document.getElementById('giscus-alt-theme').value;
+      return document.body.classList.contains('quarto-dark') ? altTheme : baseTheme;
+    };
+    const script = document.createElement("script");
+    script.src = "https://giscus.app/client.js";
+    script.async = true;
+    script.dataset.repo = "moosterwegel/quarto-website";
+    script.dataset.repoId = "R_kgDOOdS7PA";
+    script.dataset.category = "Announcements";
+    script.dataset.categoryId = "DIC_kwDOOdS7PM4CpUdv";
+    script.dataset.mapping = "title";
+    script.dataset.reactionsEnabled = "1";
+    script.dataset.emitMetadata = "0";
+    script.dataset.inputPosition = "top";
+    script.dataset.theme = getTheme();
+    script.dataset.lang = "en";
+    script.crossOrigin = "anonymous";
+    // Append the script to the desired div instead of at the end of the body
+    document.getElementById("quarto-content").appendChild(script);
+  }
+  loadGiscus();
+</script>
 </div> <!-- /content -->
 <footer class="footer">
   <div class="nav-footer">
