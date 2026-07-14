@@ -37,6 +37,9 @@ website:
      # - text: "teaching" 
       - text: "about"
         href: about.qmd
+      - href: https://penaltystats.maxoosterwegel.com
+        text: penaltystats
+        target: _blank
     right:
       # - icon: rss
       #   href: index.xml
