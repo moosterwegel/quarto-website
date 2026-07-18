@@ -16,13 +16,14 @@ execute:
   warning: false
 ---
 
-After the [descriptives of part 1](/blog/penalty-kicks-descriptives/index.qmd), we turn to the statistical models. I came up with five questions that were of interest to me:
+After the [descriptives of part 1](/blog/penalty-kicks-descriptives/index.qmd), we turn to the statistical models. I came up with six questions that were of interest to me:
 
 1. Where in the goal does a penalty have the best chance of going in?[^come-on]
 2. Which takers are best at sending the goalkeeper the wrong way, and which keepers read them best?
 3. Who are the best and worst penalty takers and penalty-stopping goalkeepers overall?
-4. How good are teams at selecting their penalty takers?
-5. How many penalties does a player need to take before their own history tells us more than the global average?
+4. How good could the very best penalty takers be?
+5. How good are teams at selecting their penalty takers?
+6. How many penalties does a player need to take before their own placement history tells us more than the global average?
 
 [^come-on]: I realize that because this is so obvious it may read like I have never watched or played football and am trying to learn about the game through numbers only like an American hedge fund that has just bought a football club. Unfortunately, I have spent more time watching (dire) football than I like to admit. I've also played quite a bit of football. I pose the question because it corresponds to a fun model and creates a beautiful visualization.
 
@@ -54,6 +55,14 @@ After the [descriptives of part 1](/blog/penalty-kicks-descriptives/index.qmd), 
 - Tim Melia is the best goalkeeper (**26/53** not scored, **49%**). Also by a considerable margin (**1.4pp** more added). The model estimates that the average penalty taker scores **9.4pp** less of their penalties against him.
 - Among the active goalkeepers, Dayne St Clair is the best (**16/35** saved) for **5.9pp** less scoring chance versus average taker. He is in goal for Canada this World Cup.
 - Roman Bürki is the worst penalty stopper, conceding **44 from 47** penalty kicks (**94%**). Part of this was bad luck as the model estimates that the average penalty taker scores **4.6pp** more from their penalties versus him.
+:::
+
+::: {.kf-section}
+**How good could the very best be?**
+
+- The estimated spread in taker skill implies that takers with a true conversion rate of ≈**89%** (**+12pp** above average) exist: roughly 1 in 1,000, so about **6** of the 5,934 takers in the data. The model just cannot say who they are as a taker's own record only outweighs the population average after ~**66** penalties, a bar only **9** takers clear.
+- A true **95%** taker would be about one in **538 million** takers, although this far out in the tail the uncertainty is enormous (one in **1.4 million** to one in **10^14^**) and such a large number may point at model misspecification (e.g. fat-tailed model may be more appropiate).
+- The best conceivable goalkeepers matter more than the best conceivable takers: a 99.9th-percentile keeper prevents **14.9pp**, more than the **+12.2pp** the equivalent taker adds.
 :::
 
 ::: {.kf-section}
@@ -1024,7 +1033,7 @@ Harry Kane stands out as the best penalty taker in the dataset by a considerable
 
 We can also see exactly why Thomas Tuchel brought a striker playing in the Saudi League into the squad: Ivan Toney ranks as an exceptionally strong penalty taker.
 
-Interestingly, for only `r sum(taker_ranks$q025_added > 0)` players, the credibility interval excludes 0. This starkly demonstrates just how many penalties a model requires to establish absolute certainty about a player's skill level.[^caveat_skill] It is almost hard to believe that we can confidently label so few players as "above average," which may suggest the need for a more informative prior.
+Interestingly, for only `r sum(taker_ranks$q025_added > 0)` players, the credibility interval excludes 0. This starkly demonstrates just how many penalties this model requires to establish absolute certainty about a player's skill level.[^caveat_skill] It is almost hard to believe that we can confidently label so few players as "above average," which may suggest the need for a more comprehensive model that includes e.g. the wrong-way and PSxG to increase the statistical signal of each kick.
 
 [^caveat_skill]: They have data from training though and I believe there are other qualities that are informative on penalty skill, e.g. ball striking. It's probably not a coincidence that Harry Kane is on top as he is a historically great ball striker. On the other hand, [other historical good finishers](https://blogarchive.statsbomb.com/articles/soccer/quantifying-finishing-skill/), like Griezman, Messi, Luis Suárez, and Son Heung-Min are only average or even worse than average penalty takers.
 
@@ -1062,6 +1071,210 @@ Among active goalkeepers, Bart Verbruggen ranks `r gk_ranks |> filter(str_detect
 Perhaps we should do a goalkeeper substitution again with the 3rd Dutch GK looking very, very promising while the starting goalkeeper looks to be quite bad.[^dutch_gk]
 
 [^dutch_gk]: Luck would have it that the very few penalties from Bart Verbruggen's professional career that are not in the dataset (Conference League, not covered by my data source), he saved: on February 23, 2023 [he saved 3 penalties](https://www.uefa.com/uefaconferenceleague/video/027e-1763da99f9d2-d77cd1537c85-1000--uecl-laufenn-potw-spieler-st8-bart-verbruggen-anderlecht-v-/) in a shootout for Anderlecht. I may try to obtain a more complete dataset in the lead up to the knockout phase of the tournament.
+
+# How good could the very best penalty takers in the world be?
+
+```{r}
+#| code-summary: "Tail of the skill distribution vs. the top of the ranking"
+# posterior of the taker-skill SD together with the intercept, so the derived
+# tail quantities are proper posteriors rather than plug-in point estimates
+tail_draws <- spread_draws(m, b_Intercept, sd_taker_name__Intercept) |>
+  mutate(
+    p999_prob = plogis(b_Intercept + qnorm(0.999) * sd_taker_name__Intercept),
+    p999_added = p999_prob - plogis(b_Intercept)
+  )
+
+sd_taker <- median(tail_draws$sd_taker_name__Intercept)
+p999 <- median(tail_draws$p999_prob)
+p999_added <- median(tail_draws$p999_added)
+
+# a Bernoulli kick carries ~p(1-p) Fisher information on the logit scale; the
+# population prior is worth 1/sd^2 of it. Equating the two gives the career
+# length at which a taker's own record equals the weight of the prior.
+info_per_kick <- baseline_prob * (1 - baseline_prob)
+n_equal <- 1 / (sd_taker^2 * info_per_kick)
+
+n_takers <- nrow(taker_ranks)
+
+# the tail run in reverse: how rare would a taker with a given *true*
+# conversion rate be under the fitted skill distribution?
+one_in_taker <- function(conv) {
+  z_draws <- with(
+    tail_draws,
+    (qlogis(conv) - b_Intercept) / sd_taker_name__Intercept
+  )
+  # upper tail directly (not 1 - pnorm), so the far tail doesn't get destroyed
+  # by floating-point cancellation near 1
+  one_in_draws <- 1 / pnorm(z_draws, lower.tail = FALSE)
+  tibble(
+    z = median(z_draws),
+    one_in = median(one_in_draws),
+    one_in_lo = quantile(one_in_draws, 0.025, names = FALSE),
+    one_in_hi = quantile(one_in_draws, 0.975, names = FALSE)
+  )
+}
+rare95 <- one_in_taker(0.95)
+rare98 <- one_in_taker(0.98)
+
+# how much of that rarity is the normal-tail assumption rather than the data?
+# read the same tail off Student-t skill distributions matched to the same SD
+one_in_taker_t <- function(conv, nu) {
+  t_draws <- with(
+    tail_draws,
+    (qlogis(conv) - b_Intercept) /
+      (sd_taker_name__Intercept * sqrt((nu - 2) / nu))
+  )
+  median(1 / pt(t_draws, df = nu, lower.tail = FALSE))
+}
+rare95_t5 <- one_in_taker_t(0.95, nu = 5)
+rare98_t5 <- one_in_taker_t(0.98, nu = 5)
+rare95_t3 <- one_in_taker_t(0.95, nu = 3)
+
+top_taker <- taker_ranks |> slice(1)
+top_taker_nm <- str_replace_all(top_taker$taker_name, "\\.", " ")
+
+most_kicks <- taker_ranks |> slice_max(n_total, n = 1, with_ties = FALSE)
+most_kicks_nm <- str_replace_all(most_kicks$taker_name, "\\.", " ")
+n_above_equal <- sum(taker_ranks$n_total > round(n_equal))
+# share of the posterior weight the prior still holds at the biggest career
+prior_weight_biggest <- n_equal / (n_equal + most_kicks$n_total)
+# and the standard error of a raw conversion rate over that career
+se_raw_biggest <- sqrt(info_per_kick / most_kicks$n_total)
+
+# winner's-curse exhibit: the best raw record among semi-regular takers
+best_raw <- taker_ranks |>
+  filter(n_total >= 20) |>
+  mutate(raw_rate = n_success / n_total) |>
+  slice_max(raw_rate, n = 1, with_ties = FALSE)
+best_raw_nm <- str_replace_all(best_raw$taker_name, "\\.", " ")
+```
+
+You may find it hard to believe that the best penalty takers seemingly increase the conversion rate by only `r scales::number(top_taker$median_added, scale = 100, accuracy = 0.1, style_positive = "plus")` pp over the average taker (which amounts to `r scales::percent(baseline_prob + top_taker$median_added, accuracy = 1)` with our `r scales::percent(baseline_prob, accuracy = 1)` baseline). It is indeed hard to believe! Fortunately, it's not true. Our model simultaneously believes that true ≈ `r scales::percent(p999, accuracy = 1)` takers exist, and the top skill estimates in our dataset are only `r scales::number(top_taker$median_added, scale = 100, accuracy = 0.1, style_positive = "plus")` pp. This is because our multilevel model is extremely honest about what it can identify for each player, and is essentially saying that while such a player is very likely to exist in our dataset, it can't confidently say which one it is. This is also demonstrated by the 95% credible intervals; a few do include the possibility that they are a `r scales::percent(p999, accuracy = 1)` taker! So don't conflate the question of "who is the best taker, and what is our best estimate of their skill?" with "how good are the best takers?". Now, how can we determine the skill level of the best takers?
+
+We can simply use the between-taker variance -- $\sigma_{\text{taker}} =$ `r scales::number(sd_taker, accuracy = 0.01)` logits -- to infer what the 99.9th percentile of true skill looks like as this variance is a statement about the population: $\operatorname{logit}^{-1}(\beta_0 + 3.09\,\sigma_{\text{taker}}) \approx$ `r scales::percent(p999, accuracy = 1)` (`r scales::number(p999_added, scale = 100, accuracy = 0.1, style_positive = "plus")` pp above average). With `r scales::comma(n_takers)` takers in the data, the model expects roughly `r max(1, round(n_takers / 1000))` of them to be at that level or better. So it is convinced such takers exist -- it just can't tell you who they are!
+
+The plot below puts those two statements next to each other. The wide curve is the distribution of true skill the model believes exists in the population (one thin line per posterior draw of $\beta_0$ and $\sigma_{\text{taker}}$); the narrow spike is everything it is willing to attribute to the `r scales::comma(n_takers)` individual takers after shrinkage. (The spike's twin peaks are the `r scales::comma(sum(taker_ranks$n_total == 1))` one-kick takers: missing or scoring your only career penalty moves your estimate by barely a percentage point.)
+
+```{r}
+#| code-summary: "Plot the skill the model believes exists vs. the skill it can attribute"
+#| fig-height: 4.5
+#| fig-alt: >
+#|   Density plot of true conversion rate against the average goalkeeper. A wide
+#|   dark curve (the fitted population distribution of true skill, with thin
+#|   spaghetti lines showing posterior uncertainty) stretches from about 60% to
+#|   past 90%, while a tall narrow blue spike (the per-taker posterior medians)
+#|   is crammed around the 77% baseline. Annotations mark the highest individual
+#|   estimate, the 99.9th percentile of true skill and the rarity of a true 95%
+#|   taker.
+conv_grid <- seq(0.55, 0.99, length.out = 400)
+
+# change of variables: the skill distribution is normal on the logit scale, so
+# its density on the conversion-rate scale picks up a 1/(p(1-p)) jacobian
+pop_curve <- function(b0, sigma) {
+  tibble(
+    conv = conv_grid,
+    dens = dnorm(qlogis(conv_grid), mean = b0, sd = sigma) /
+      (conv_grid * (1 - conv_grid))
+  )
+}
+
+# one thin population curve per posterior draw of (beta_0, sigma_taker), so the
+# uncertainty about the skill distribution itself stays visible
+set.seed(2026)
+pop_spaghetti <- tail_draws |>
+  ungroup() |>
+  slice_sample(n = 120) |>
+  select(.draw, b_Intercept, sd_taker_name__Intercept) |>
+  crossing(conv = conv_grid) |>
+  mutate(dens = dnorm(qlogis(conv), b_Intercept, sd_taker_name__Intercept) /
+    (conv * (1 - conv)))
+
+pop_med <- pop_curve(median(tail_draws$b_Intercept), sd_taker)
+
+est_dens <- density(baseline_prob + taker_ranks$median_added)
+est_d <- tibble(conv = est_dens$x, dens = est_dens$y)
+
+kane_conv <- baseline_prob + top_taker$median_added
+ymax <- max(est_d$dens)
+
+ggplot() +
+  geom_area(data = est_d, aes(conv, dens), fill = "#78B7C5", alpha = 0.55) +
+  geom_line(data = pop_spaghetti, aes(conv, dens, group = .draw),
+            color = "gray35", alpha = 0.05) +
+  geom_line(data = pop_med, aes(conv, dens), color = "gray20", linewidth = 0.7) +
+  geom_vline(xintercept = baseline_prob, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 0.787, y = 0.88 * ymax, hjust = 0, size = 3.4,
+           color = "#4a7c8a", fontface = "bold", lineheight = 0.95,
+           label = paste0("what the model can pin on individuals:\nthe ",
+                          scales::comma(n_takers), " takers' posterior medians")) +
+  annotate("text", x = 0.665, y = 0.14 * ymax, hjust = 1, size = 3.4,
+           color = "gray20", fontface = "bold", lineheight = 0.95,
+           label = "true skill the model\nbelieves exists") +
+  annotate("point", x = kane_conv, y = 0, color = "#78B7C5", size = 2) +
+  annotate("text", x = kane_conv, y = 0.19 * ymax, hjust = 0.75, size = 3.2,
+           color = "gray30", lineheight = 0.95,
+           label = paste0("highest estimate:\n", top_taker_nm, " (",
+                          scales::percent(kane_conv, accuracy = 1), ")")) +
+  annotate("segment", x = p999, xend = p999, y = 0.38 * ymax, yend = 0.02 * ymax,
+           color = "gray40", linewidth = 0.3,
+           arrow = arrow(length = unit(0.012, "npc"), type = "closed")) +
+  annotate("text", x = p999, y = 0.41 * ymax, hjust = 0.6, vjust = 0, size = 3.2,
+           color = "gray30", lineheight = 0.95,
+           label = paste0("99.9th percentile of true skill (",
+                          scales::percent(p999, accuracy = 1), "):\n~",
+                          max(1, round(n_takers / 1000)), " of the ",
+                          scales::comma(n_takers), " takers should sit beyond this")) +
+  annotate("segment", x = 0.95, xend = 0.95, y = 0.60 * ymax, yend = 0.02 * ymax,
+           color = "gray40", linewidth = 0.3,
+           arrow = arrow(length = unit(0.012, "npc"), type = "closed")) +
+  annotate("text", x = 0.95, y = 0.63 * ymax, hjust = 0.6, vjust = 0, size = 3.2,
+           color = "gray30", lineheight = 0.95,
+           label = paste0("a true 95% taker:\n~1 in ",
+                          scales::number(rare95$one_in / 1e6, accuracy = 1),
+                          " million")) +
+  scale_x_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+  labs(x = "True conversion rate against the average goalkeeper", y = NULL) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+```
+
+ Can we also say how likely it is that we have seen a taker with a _true_ conversion rate of 95%? Such a conversion rate would be `r scales::number(rare95$z, accuracy = 0.1)` standard deviations above the average taker: under the fitted normal skill distribution, roughly one in every `r scales::number(rare95$one_in / 1e6, accuracy = 1)` million takers is at that level[^tail_extrapolation] -- though the posterior uncertainty this far out in the tail is enormous: the 95% credible interval runs from one in `r scales::comma(signif(rare95$one_in_lo, 2))` to one in $10^{`r round(log10(rare95$one_in_hi))`}$. A true 98% taker would be `r scales::number(rare98$z, accuracy = 0.1)` standard deviations out, or about one in $10^{`r round(log10(rare98$one_in))`}$ takers (95% CrI: $10^{`r round(log10(rare98$one_in_lo))`}$ to $10^{`r round(log10(rare98$one_in_hi))`}$). Whether football has nonetheless already produced such takers, I leave as an exercise to the reader (the table above is sortable by observed conversion rate, if that helps).
+
+[^tail_extrapolation]: Of course, such large numbers could also point at the misspecification of our model, e.g. our model may need fatter tails to assign more probability to such outliers. To illustrate (without actually fitting a fat-tailed model): if we do the same calculation using a Student-$t_5$ skill distribution the true-95% taker becomes one in `r scales::comma(signif(rare95_t5, 2))` takers and the true-98% taker one in `r scales::comma(signif(rare98_t5, 2))`. With heavier tails still ($t_3$), the model would even expect `r round(n_takers / rare95_t3)` or so true-95% takers among the takers observed here. What I think is robust across these model choices is that, however rare true 95% takers are, no career is long enough to certify any particular player as one.
+
+So why can't we say who these players are? A taker's true skill posterior is, approximately, a precision-weighted average of the population average and their own record. On the logit scale, one kick at conversion rate $p$ carries about $p(1-p)$ units of Fisher information[^fisher], while the population prior is worth $1/\sigma_{\text{taker}}^2$ units. The two have equal influence on the skill estimate when
+
+$$
+n^{*} \;=\; \frac{1/\sigma_{\text{taker}}^2}{p(1-p)},
+$$
+
+which with our estimates comes out at $n^{*} \approx$ `r round(n_equal)` kicks: a taker needs about that many penalties before their own record _matches_ the weight of the prior -- and at exactly $n^{*}$ the estimate still sits halfway between their record and the average. Only `r n_above_equal` of the `r scales::comma(n_takers)` takers in the data clear that bar (pun intended) at all. Even the biggest career, `r most_kicks_nm`'s `r most_kicks$n_total` kicks, still leaves the prior holding `r scales::percent(prior_weight_biggest, accuracy = 1)` of the weight: at a ≈`r scales::percent(baseline_prob, accuracy = 1)` baseline each kick just carries remarkably little signal unfortunately. 
+
+[^fisher]: The Fisher information of a single Bernoulli observation for its own logit is exactly $p(1-p)$; evaluating it at the baseline rate is a delta-method approximation that seems accurate for effects of this size.
+
+All of this means that the maximum of the per-player posterior means systematically _understates_ the maximum of true skills, because every one of those means has been shrunk toward the average. Symmetrically, the maximum of the raw records -- `r best_raw_nm`'s `r best_raw$n_success` out of `r best_raw$n_total` here, or Le Tissier's often quoted 47/48 record -- _overstates_ it, as with a noisy measure, the top position belongs to someone who, besides being good, was also lucky.
+
+```{r}
+#| code-summary: "The same, but for goalkeepers"
+gk_tail_draws <- spread_draws(m, b_Intercept, sd_gk_name__Intercept) |>
+  mutate(
+    p999_gk_prob = plogis(b_Intercept - qnorm(0.999) * sd_gk_name__Intercept),
+    p999_gk_saved = plogis(b_Intercept) - p999_gk_prob
+  )
+sd_gk <- median(gk_tail_draws$sd_gk_name__Intercept)
+p999_gk <- median(gk_tail_draws$p999_gk_prob)
+p999_gk_saved <- median(gk_tail_draws$p999_gk_saved)
+n_equal_gk <- 1 / (sd_gk^2 * info_per_kick)
+most_faced <- gk_ranks |> slice_max(n_total, n = 1, with_ties = FALSE)
+most_faced_nm <- str_replace_all(most_faced$gk_name, "\\.", " ")
+```
+
+Does the same hold for the identification of goalkeeper skil? Their skill spread is actually a bit narrower -- $\sigma_{\text{gk}} =$ `r scales::number(sd_gk, accuracy = 0.01)` logits -- but a keeper's effect pushes the probability _down_ the logistic curve, where it is steeper, so a 99.9th-percentile keeper still holds the takers they face to a conversion rate of ≈`r scales::percent(p999_gk, accuracy = 1)`. That is `r scales::number(p999_gk_saved, scale = 100, accuracy = 0.1)` pp prevented -- _more_ than the best takers add. Identifying who they exactly are is just as hard, though: the narrower spread raises the break-even career to $n^{*} \approx$ `r round(n_equal_gk)` kicks faced, which only `r sum(gk_ranks$n_total > round(n_equal_gk))` keepers clear (`r most_faced_nm` leads at `r most_faced$n_total`).
 
 # How good are teams at selecting penalty takers? Evidence from English football
 As mentioned before, there's information in the team's decision. We can model these as a latent belief about a teammate's penalty-taking skill. Most penalties are taken by the supposedly better takers, so there is a strong selection effect: we only ever observe a scoring outcome for the player who was *chosen* to take the kick. If that choice tracks skill, the takers we observe are a non-random, better-than-average slice of all footballers, and a model fit only to them mistakes "the average taker" for "the average player".
@@ -1785,3 +1998,5 @@ After writing these blog posts, I realized that -- by modeling the skills as pos
 Second, this same posterior distribution lets us simulate entire shootouts between two sets of players: draw from each player's posterior and use the results in a Monte Carlo simulation. Besides being fun, it can provide an answer to what matters more in a shootout: good takers or good goalkeepers. Would you rather have one Tim Melia or 10 Harry Kanes (like) players during your shootout?[^spoiler]
 
 [^spoiler]: You want a good goalkeeper based on my simulations. I think we could also have inferred that from the skill estimates themselves as the best goalkeepers prevent more expected goals than the best takers add (compared to the average takers/goalkeepers). 
+
+I have published a website at [penaltystats.maxoosterwegel.com](https://penaltystats.maxoosterwegel.com) with tools that allow you to do these two things (compare skill estimates, simulate shootouts) and browse skill estimates from the same model described above but fitted on a dataset with broader temporal and geographical coverage amounting to a total of 300k+ penalty kicks! Check it out!
