@@ -204,7 +204,7 @@ psxg_grid <- marginaleffects::predictions(
   )
 ```
 
-To turn the fitted model into a picture, we lay a grid of points across the goal and calculate the predicted scoring probability at each cell of the grid (each cell is a `marginaleffects` prediction (the posterior mean and its 95% credibility interval)). We do this separately for left- and right-footed taker.
+To turn the fitted model into a picture, we lay a grid of points across the goal and calculate the predicted scoring probability at each cell of the grid (each cell is a `marginaleffects` prediction (the posterior mean and its 95% credibility interval)). We do this separately for left- and right-footed takers.
 ```{r}
 #| code-summary: "Plot interactive heatmap"
 #| column: page
