@@ -94,7 +94,7 @@ $$
 \end{aligned}
 $$
 
-where $(x_i, y_i)$ is where the ball crosses the goal line and $f_{\text{Left}}$, $f_{\text{Right}}$ are thin-plate spline surfaces fit separately per foot (the `by = kick_foot` term). The index $i$ runs over on-target shots only — scored or saved — since shots that miss or strike the frame are deterministically no-goal and carry no placement information here.
+where $(x_i, y_i)$ is where the ball crosses the goal line and $f_{\text{Left}}$, $f_{\text{Right}}$ are thin-plate spline surfaces fit separately per foot (the `by = kick_foot` term). The index $i$ runs over on-target shots only — scored or saved — since shots that miss or strike the frame are deterministically no-goal and contain no placement information here.
 
 ```{r}
 #| label: snapshot-db
@@ -204,7 +204,7 @@ psxg_grid <- marginaleffects::predictions(
   )
 ```
 
-To turn the fitted model into a picture, we lay a grid of points across the goal and read off the predicted scoring probability at each one, separately for a left- and right-footed taker. Every cell is one `marginaleffects` prediction (the posterior mean and its 95% credibility interval); the heatmap below simply colours them.
+To turn the fitted model into a picture, we lay a grid of points across the goal and calculate the predicted scoring probability at each cell of the grid (each cell is a `marginaleffects` prediction (the posterior mean and its 95% credibility interval)). We do this separately for left- and right-footed taker.
 ```{r}
 #| code-summary: "Plot interactive heatmap"
 #| column: page
@@ -441,7 +441,7 @@ plot_ly(height = 400) |>
 ```
 
 # What penalty takers are best at sending the goalkeeper the wrong way?
-There is, however, more to penalties than shooting. For example, there's also the art of deceiving the goalkeeper on where you're going to shoot, or perhaps waiting until the goalkeeper chooses a side himself -- the only thing left to do then is to pass the ball into the part of the goal where the goalkeeper is not. 
+There is, however, more to penalties than shooting. For example, there's also the art of deceiving the goalkeeper on where you're going to shoot, or perhaps waiting until the goalkeeper chooses a side himself -- the only thing left to do then is to pass the ball into the other part of the goal. 
 
 Fortunately, we have information on what side the goalkeeper went and as such we can build a simple model of this skill by regressing whether the keeper went the wrong way on a taker and a goalkeeper random intercepts. The random intercepts are essential here as football and penalty taking is a very low frequency activity and this pools the information and thereby regularizes the estimates for each player and goalkeeper. Both the taker and keeper are modelled in the same model so that their skills are estimated simultaneously. 
 
@@ -456,7 +456,7 @@ v_k &\sim \operatorname{Normal}(0, \sigma^2_{\text{gk}}), \quad k = 1, \dots, K_
 \end{aligned}
 $$
 
-$\beta_0$ is the global log-odds the keeper goes the wrong way; the crossed random intercepts $u_j$ and $v_k$ are each taker's and each keeper's deviation from it. Their shrinkage toward $0$ is the regularisation we want: a player with a handful of penalties is pulled close to average, while the partial pooling lets a well-observed player move further out. The "added probability" we rank on is that deviation put back on the probability scale, $\operatorname{logit}^{-1}(\beta_0 + u_j) - \operatorname{logit}^{-1}(\beta_0)$.
+$\beta_0$ is the global log-odds the keeper goes the wrong way; the crossed random intercepts $u_j$ and $v_k$ are each taker's and each keeper's deviation from this global term. Their shrinkage toward $0$ is the regularisation we want: a player with a handful of penalties is pulled close to average, while the partial pooling lets a well-observed player move further out. The "added probability" we rank on is that deviation on the probability scale, $\operatorname{logit}^{-1}(\beta_0 + u_j) - \operatorname{logit}^{-1}(\beta_0)$.
 
 ```{r}
 #| code-summary: "Helper functions for the skill models"
@@ -962,7 +962,7 @@ plot_skill_distribution(
 Note how much wider this skill distribution is for penalty takers than for goalkeepers.
 
 # Quantifying penalty taking and stopping skill from the top down
-Now, modeling all skills from the bottom up is hard as you then need to identify each of the skills that go into penalty taking. Even if you were able to write down all skills that go into this, you would also need the data on these skills. However, we do not have data on the speed at which the ball travels and I expect many of the skills to be latent. Therefore, I opt to model the skill from the top down. The model is very similar as before:
+Now, modeling all skills from the bottom up is hard as you then need to identify each of the skills that go into penalty taking. Even if you were able to write down all skills that go into this, you would also need the data on these skills. However, we do not have data on, for example, the speed at which the ball travels and I expect many of the skills to be latent. Therefore, I opt to model the skill from the top down. The model is very similar as before:
 
 $$
 \begin{aligned}
@@ -989,7 +989,7 @@ m <- brms::brm(
 )
 ```
 
-It's a deliberately simple model: we do not take possible differences in context between penalty histories from players into account. So no information on derbies, knock-out, shootouts, chance to go ahead etc. -- just the taker, the goalkeeper, and whether the penalty was scored. Note the outcome is whether the taker *scored*, not whether the keeper *saved*. Part of a keeper's skill may be unsettling the taker into missing the target altogether, and modelling "scored" lets the keeper take credit for that too.
+It's a deliberately simple model: we do not take possible differences in context between penalty histories from players into account. So no information on derbies, knock-out, shootouts, chance to go ahead etc. -- just the taker, the goalkeeper, and whether the penalty was scored. Note that the outcome is whether the taker *scored*, not whether the keeper *saved*. Part of a keeper's skill may be unsettling the taker into missing the target altogether, and modelling "scored" lets the keeper take credit for that too.
 
 ## Now, among penalty takers, who are the best? Who are the worst? 
 ```{r}
@@ -1037,7 +1037,7 @@ Interestingly, for only `r sum(taker_ranks$q025_added > 0)` players, the credibi
 
 [^caveat_skill]: They have data from training though and I believe there are other qualities that are informative on penalty skill, e.g. ball striking. It's probably not a coincidence that Harry Kane is on top as he is a historically great ball striker. On the other hand, [other historical good finishers](https://blogarchive.statsbomb.com/articles/soccer/quantifying-finishing-skill/), like Griezman, Messi, Luis Suárez, and Son Heung-Min are only average or even worse than average penalty takers.
 
-Finally, it is also worth noting that the uncertainty in estimated skill is bigger for the worst takers because -- of course -- their environment picks up on their ability and they won't be the designed penalty taker for their team for long -- preventing the accumulation of many penalties across their career. Switching penalty takers is cheap. 
+Finally, it is also worth noting that the uncertainty in estimated skill is bigger for the worst takers because -- of course -- their environment picks up on their perceived ability and they won't be the designed penalty taker for their team for long -- preventing the accumulation of many penalties across their career. Switching penalty takers is cheap. 
 
 ```{r}
 #| code-summary: "Plot distribution of penalty-taking and -stopping skill"
@@ -1070,7 +1070,7 @@ Among active goalkeepers, Bart Verbruggen ranks `r gk_ranks |> filter(str_detect
 
 Perhaps we should do a goalkeeper substitution again with the 3rd Dutch GK looking very, very promising while the starting goalkeeper looks to be quite bad.[^dutch_gk]
 
-[^dutch_gk]: Luck would have it that the very few penalties from Bart Verbruggen's professional career that are not in the dataset (Conference League, not covered by my data source), he saved: on February 23, 2023 [he saved 3 penalties](https://www.uefa.com/uefaconferenceleague/video/027e-1763da99f9d2-d77cd1537c85-1000--uecl-laufenn-potw-spieler-st8-bart-verbruggen-anderlecht-v-/) in a shootout for Anderlecht. I may try to obtain a more complete dataset in the lead up to the knockout phase of the tournament.
+[^dutch_gk]: Luck would have it that the very few penalties from Bart Verbruggen's professional career that are not in the dataset (Conference League, not covered by my data source), he saved: on February 23, 2023 [he saved 3 penalties](https://www.uefa.com/uefaconferenceleague/video/027e-1763da99f9d2-d77cd1537c85-1000--uecl-laufenn-potw-spieler-st8-bart-verbruggen-anderlecht-v-/) in a shootout for Anderlecht. I may try to obtain a more complete dataset in the lead up to the knockout phase of the tournament. Update: see [penaltykicks.maxoosterwegel.com](penaltykicks.maxoosterwegel.com) for a much more comprehensive dataset with all data on these Dutch goalkeepers.
 
 # How good could the very best penalty takers in the world be?
 
@@ -1153,7 +1153,7 @@ You may find it hard to believe that the best penalty takers seemingly increase 
 
 We can simply use the between-taker variance -- $\sigma_{\text{taker}} =$ `r scales::number(sd_taker, accuracy = 0.01)` logits -- to infer what the 99.9th percentile of true skill looks like as this variance is a statement about the population: $\operatorname{logit}^{-1}(\beta_0 + 3.09\,\sigma_{\text{taker}}) \approx$ `r scales::percent(p999, accuracy = 1)` (`r scales::number(p999_added, scale = 100, accuracy = 0.1, style_positive = "plus")` pp above average). With `r scales::comma(n_takers)` takers in the data, the model expects roughly `r max(1, round(n_takers / 1000))` of them to be at that level or better. So it is convinced such takers exist -- it just can't tell you who they are!
 
-The plot below puts those two statements next to each other. The wide curve is the distribution of true skill the model believes exists in the population (one thin line per posterior draw of $\beta_0$ and $\sigma_{\text{taker}}$); the narrow spike is everything it is willing to attribute to the `r scales::comma(n_takers)` individual takers after shrinkage. (The spike's twin peaks are the `r scales::comma(sum(taker_ranks$n_total == 1))` one-kick takers: missing or scoring your only career penalty moves your estimate by barely a percentage point.)
+The plot below puts the answers to the two questions next to each other. The wide curve is the distribution of true skill the model believes exists in the population (one thin line per posterior draw of $\beta_0$ and $\sigma_{\text{taker}}$); the narrow spike is everything it is willing to attribute to the `r scales::comma(n_takers)` individual takers after shrinkage. (The spike's twin peaks are the `r scales::comma(sum(taker_ranks$n_total == 1))` one-kick takers: missing or scoring your only career penalty moves your skill estimate by barely a percentage point.)
 
 ```{r}
 #| code-summary: "Plot the skill the model believes exists vs. the skill it can attribute"
@@ -1257,7 +1257,7 @@ which with our estimates comes out at $n^{*} \approx$ `r round(n_equal)` kicks: 
 
 [^fisher]: The Fisher information of a single Bernoulli observation for its own logit is exactly $p(1-p)$; evaluating it at the baseline rate is a delta-method approximation that seems accurate for effects of this size.
 
-All of this means that the maximum of the per-player posterior means systematically _understates_ the maximum of true skills, because every one of those means has been shrunk toward the average. Symmetrically, the maximum of the raw records -- `r best_raw_nm`'s `r best_raw$n_success` out of `r best_raw$n_total` here, or Le Tissier's often quoted 47/48 record -- _overstates_ it, as with a noisy measure, the top position belongs to someone who, besides being good, was also lucky.
+All of this means that the maximum of the per-player posterior means systematically _understates_ the maximum of true skills, because every one of those means has been shrunk toward the average. On the other hand, the maximum of the raw records -- `r best_raw_nm`'s `r best_raw$n_success` out of `r best_raw$n_total` here, or Le Tissier's often quoted 47/48 record -- _overstates_ it, as with a noisy measure, the top position belongs to someone who, besides being good, was also lucky.
 
 ```{r}
 #| code-summary: "The same, but for goalkeepers"
@@ -1277,9 +1277,9 @@ most_faced_nm <- str_replace_all(most_faced$gk_name, "\\.", " ")
 Does the same hold for the identification of goalkeeper skil? Their skill spread is actually a bit narrower -- $\sigma_{\text{gk}} =$ `r scales::number(sd_gk, accuracy = 0.01)` logits -- but a keeper's effect pushes the probability _down_ the logistic curve, where it is steeper, so a 99.9th-percentile keeper still holds the takers they face to a conversion rate of ≈`r scales::percent(p999_gk, accuracy = 1)`. That is `r scales::number(p999_gk_saved, scale = 100, accuracy = 0.1)` pp prevented -- _more_ than the best takers add. Identifying who they exactly are is just as hard, though: the narrower spread raises the break-even career to $n^{*} \approx$ `r round(n_equal_gk)` kicks faced, which only `r sum(gk_ranks$n_total > round(n_equal_gk))` keepers clear (`r most_faced_nm` leads at `r most_faced$n_total`).
 
 # How good are teams at selecting penalty takers? Evidence from English football
-As mentioned before, there's information in the team's decision. We can model these as a latent belief about a teammate's penalty-taking skill. Most penalties are taken by the supposedly better takers, so there is a strong selection effect: we only ever observe a scoring outcome for the player who was *chosen* to take the kick. If that choice tracks skill, the takers we observe are a non-random, better-than-average slice of all footballers, and a model fit only to them mistakes "the average taker" for "the average player".
+As mentioned before, there's information in the team's decision. We can model these as a latent belief about a teammate's penalty-taking skill. Most penalties are taken by the supposedly better takers, so there is a strong selection effect: we only ever observe a scoring outcome for the player who was *chosen* to take the kick. If that choice indeed tracks skill, the takers we observe are a non-random, better-than-average slice of all footballers. When we fit a model on this data we should be careful not to conflate "the average taker" for "the average player".
 
-To correct for this we fit a joint (Heckman-style) model with two linked equations. For each of the players on the pitch at penalty $i$ (indexed $\text{pl}[i]$, facing keeper $\text{gk}[i]$):
+In attempt to correct for this selection effect, we fit a joint (Heckman-style) model with two linked equations. For each of the players on the pitch at penalty $i$ (indexed $\text{pl}[i]$, facing keeper $\text{gk}[i]$):
 
 $$
 \begin{aligned}
@@ -1300,7 +1300,7 @@ The _selection_ equation asks, among the eleven players on the pitch (the risk s
 
 The two per-player effects couple the equations by drawing $a_j$ and $u_j$ from a shared bivariate normal with correlation $\rho$. $\rho$ measures whether the players teams *choose* are also the players who *score*: a positive $\rho$ says selection tracks skill. It also allows us to estimate the skill for players we never see take a penalty; their scoring skill $u_j$ is inferred from their selection propensity $a_j$ through $\rho$.  $\beta_0$ now corresponds to the average footballer rather than the average penalty taker.
 
-Ideally, we would fit a more complex model that also takes into account _who_ the other players on the field were: if both Kane and Tony are on the field and Kane takes it, we get some information on who is the better penalty taker between them. Similarly, in shootouts there is information on who is selected among the first 5 takers. I think such a model would amount to a discrete choice model. However, it would require me to write custom `STAN` code so for now I revert to the simpler selection model that I can fit in `brms`.
+Ideally, we would fit a more complex model that also takes into account _who_ the other players on the field were: if both Kane and Tony are on the field and Kane takes it, we get some information on who is the better penalty taker between them. Similarly, in shootouts there is information on who is selected among the first 5 takers. I think such a model would amount to a discrete choice model. However, it would require me to write custom `Stan` code so for now I revert to the simpler selection model that I can fit in `brms`.
 
 ```{r}
 #| code-summary: "Transform data"
@@ -1391,7 +1391,7 @@ pct_never_top5_cup <- share_never_taker(
 
 ```
 
-Moreover, we limit ourselves to the English top level competitions from our dataset because the cup coverage in this dataset from the other leagues is limited. And I think this is important for model identification: `r scales::percent(pct_never_england, accuracy = 0.1)` has never taken a penalty in the English top level competitions (Premier League, FA Cup and League Cup), while this is as high as `r scales::percent(pct_never_top5_cup, accuracy = 0.1)` if we filter down to top 5 leagues and cups (because cup games where shootouts can happen are mostly not covered).
+Moreover, we limit ourselves to the English top level competitions from our dataset because the cup coverage in this dataset from the other leagues is limited: I think this is important for model identification: `r scales::percent(pct_never_england, accuracy = 0.1)` has never taken a penalty in the English top level competitions (Premier League, FA Cup and League Cup), while this is as high as `r scales::percent(pct_never_top5_cup, accuracy = 0.1)` if we filter down to top 5 leagues and cups (because cup games where shootouts can happen are mostly not covered).
 
 ```{r}
 #| code-summary: "Fit model"
@@ -1554,7 +1554,7 @@ table_re(
 
 In this filtered dataset we see that `r top_taker_name` is still the top penalty taker. However, the bottom part is much more interesting now, as the worst penalty takers are now believed to be those players who had many opportunities but were not selected by themselves or their team in shootouts or during on field penalties. And instead of getting the average conversion rate among penalty takers, we now estimate the average conversion rate among footballers. This is slightly lower, at about `r scales::percent(baseline_conv, accuracy = 1)`, with the worst players expected to convert only around `r scales::percent(worst_taker$median_abs, accuracy = 1)`. Already good takers who were also trusted a lot, like Ivan Toney (took `r toney$n_taken` of `r toney$n_opportunities` opportunities in this dataset), are estimated to be even a bit better now.
 
-The exact skill estimate for the bottom takers are probably up for debate: a player who never takes a penalty has no scoring record, so the model can only infer their conversion from how unlikely they are to be picked, translated into skill through the correlation $\rho$. With no data to anchor them, it is the prior rather than the evidence that decides the exact number. The numbers for the worst takers are therefore best read as an educated extrapolation.
+The exact skill estimate for the bottom takers are probably up for debate: a player who never takes a penalty has no scoring record, so the model can only infer their conversion from how unlikely they are to be picked, (this is then translated into an actual skill estimate through the correlation $\rho$). And with no data to anchor the skill estimates for the never takers, it is the prior rather than the evidence that decides the exact number. The numbers for the worst takers are therefore best read as an educated extrapolation.
 
 What's less up for debate I think, is the correlation parameter between a player's likelihood of taking a penalty and their ability to score one. This comes out at `r scales::number(rho_post[, "Estimate"], accuracy = 0.01)` (95% CrI `r scales::number(rho_post[, "Q2.5"], accuracy = 0.01)` to `r scales::number(rho_post[, "Q97.5"], accuracy = 0.01)`). The players who are most likely to step up (the regular penalty takers) seem indeed the best at converting them. In other words, the teams are pretty good at selecting their penalty takers!
 
@@ -1609,7 +1609,7 @@ Because penalty placement preferences are so alike across players, a player's fi
 
 A few things are worth noting on this calculation. For example, you could make the argument that this high $\phi$ value is to be expected because this data consists only of _penalty takers_ and mostly of takers who have taken lots of penalties (i.e. specialists) and these know they need to be maximally unpredictable to maximize their chances in the long run and therefore vary a lot. Among inexperienced players, this may be less the case and $\phi$ may be lower. A counterpoint to this is that in the [previous blog post](/blog/penalty-kicks-descriptives/index.qmd) we observed that there is not that great of a difference in distribution across left, centre, right between different match situations, experience, and player position.[^difference] So maybe we indeed do need that many penalties. This would suggest the study of the opponent is in part an overfitting exercise.[^concede]
 
-[^concede]: I concede that I'm not intimately familiar enough with the preparation process to make definite statements on this. Moreover, there could be different strategies for maximizing your chance in _this_ shootout and over _all_ shootouts. Looking more into it, the preparation suggested by [this article](https://www.nytimes.com/athletic/5625975/2024/07/10/netherlands-penalty-cheat-sheet-england-pickford/) seems quite sensible although they probably still overfit in light of my findings and do not take into account the impact of knowing that they know.
+[^concede]: I concede that I'm not familiar enough with the preparation process to make definite statements on this. Moreover, there could be different strategies for maximizing your chance in _this_ shootout and over _all_ shootouts. Looking more into it, the preparation suggested by [this article](https://www.nytimes.com/athletic/5625975/2024/07/10/netherlands-penalty-cheat-sheet-england-pickford/) seems quite sensible although they probably still overfit in light of my findings and do not take into account the impact of knowing that they know.
 
 [^difference]: The difference between these proportions and the plot from the [previous post](/blog/penalty-kicks-descriptives/index.qmd) is that that model included all shots, including those that missed the goal, while this model is limited to those shots on goal. 
 
