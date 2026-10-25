@@ -372,3 +372,58 @@ div.quarto-about-solana {
     }
   }
 }
+// ===== Tabsets ====================================================
+// The navbar rules above zero the side padding of every .nav-link and pad
+// every .nav-item, which also hits tabset tabs: the labels ran into their
+// borders. And each tabset boxes its content in a padded border, so nested
+// tabsets stacked box in box. Instead: no boxes; the outer tabs as an
+// underlined row, a nested tabset as a row of small pills under it.
+.panel-tabset {
+  .nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    gap: 1.25rem;
+  }
+  .nav-item {
+    padding-right: 0 !important;
+  }
+  .nav-tabs .nav-link {
+    padding: 0.3rem 0 !important;
+    margin-bottom: -1px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6c757d;
+    &:hover { color: #1D323E; }
+    &.active {
+      color: #1D323E;
+      background: transparent;
+      border-bottom-color: #1D323E;
+    }
+  }
+  .tab-content {
+    border: none;
+    padding: 0.75rem 0 0;
+  }
+
+  // the nested tabset: pills
+  .panel-tabset {
+    .nav-tabs {
+      border-bottom: none;
+      gap: 0.35rem;
+    }
+    .nav-tabs .nav-link {
+      padding: 0.1rem 0.7rem !important;
+      margin-bottom: 0;
+      border: 1px solid #dee2e6;
+      border-radius: 999px;
+      font-size: 0.875em;
+      &.active {
+        background: #1D323E;
+        border-color: #1D323E;
+        color: #fff;
+      }
+    }
+    .tab-content {
+      padding-top: 0.25rem;
+    }
+  }
+}
