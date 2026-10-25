@@ -1,0 +1,8 @@
+/* The trends figure spans .column-screen-inset and fills it (out-width: 100%),
+   which on a wide screen makes it very large. Cap the block and centre it in
+   the page grid, tabs and all; below the cap it still fills the inset. */
+#trends-figure.column-screen-inset {
+  justify-self: center;
+  width: 100%;
+  max-width: 1300px;
+}

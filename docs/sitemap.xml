@@ -2,62 +2,66 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://maxoosterwegel.com/blog/fdr-heuristics/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.099Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/conditional-logistic-regression-omics/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.094Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/impute-and-remove-technical-variation-metabolomics/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.112Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/penalty-kicks-descriptives/index.html</loc>
-    <lastmod>2026-06-27T13:34:57.718Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/penalty-kicks-statistical-models/index.html</loc>
-    <lastmod>2026-10-04T12:40:19.207Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/hire_me.html</loc>
-    <lastmod>2026-06-07T15:32:06.291Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/qr.html</loc>
-    <lastmod>2026-06-07T15:32:06.293Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/index.html</loc>
-    <lastmod>2026-07-11T12:16:06.125Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/about.html</loc>
-    <lastmod>2026-06-21T16:53:54.038Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/metabolite-ratios/index.html</loc>
-    <lastmod>2026-06-14T19:44:56.298Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/mr-chemical-agents/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.249Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/icc/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.102Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maxoosterwegel.com/blog/interactive-within-subject-variability-tool/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.186Z</lastmod>
+    <lastmod>2026-10-24T11:57:12.839Z</lastmod>
   </url>
   <url>
     <loc>https://maxoosterwegel.com/blog/bivariate-censoring/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.082Z</lastmod>
+    <lastmod>2026-10-24T11:57:12.822Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/interactive-within-subject-variability-tool/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.919Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/icc/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.842Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/mr-chemical-agents/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.996Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/metabolite-ratios/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.996Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/about.html</loc>
+    <lastmod>2026-10-24T11:57:12.822Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/index.html</loc>
+    <lastmod>2026-10-24T11:57:13.230Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/qr.html</loc>
+    <lastmod>2026-10-24T11:57:13.232Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/hire_me.html</loc>
+    <lastmod>2026-10-24T11:57:13.230Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/penalty-kicks-statistical-models/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.998Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/penalty-kicks-descriptives/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.997Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/impute-and-remove-technical-variation-metabolomics/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.852Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/conditional-logistic-regression-omics/index.html</loc>
+    <lastmod>2026-10-24T11:57:12.834Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maxoosterwegel.com/blog/crc-netherlands/index.html</loc>
+    <lastmod>2026-10-25T17:52:59.114Z</lastmod>
   </url>
   <url>
     <loc>https://maxoosterwegel.com/blog/left-censored-models-showcase/index.html</loc>
-    <lastmod>2026-06-07T15:32:06.186Z</lastmod>
+    <lastmod>2026-10-24T11:57:12.919Z</lastmod>
   </url>
 </urlset>

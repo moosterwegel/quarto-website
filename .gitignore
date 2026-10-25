@@ -14,3 +14,9 @@
 /blog/penalty-kicks-statistical-models/data/
 # Cached brms model fits are derived from that data (and large) — local only
 /blog/penalty-kicks-statistical-models/models/
+
+# Local-only archives (bundles, scratch outputs), at any depth
+_local-archive/
+# Dutch registry, WHO and CBS extracts cached by blog/crc-netherlands/nl-data.R:
+# the sources' files rather than ours, and they rebuild themselves
+/blog/crc-netherlands/data/
