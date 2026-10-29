@@ -1,13 +1,10 @@
 # Dutch colorectal incidence, mortality and population: download, check, cache.
 #
-# blog: a copy of the data script behind my report on colorectal cancer in the
-# Netherlands, with only what the post needs changed; a changed line is marked
-# `# blog:`. Like the original it is a SCRIPT: knitr's `file:` chunk option
-# pastes these lines into the `nl-data` chunk of index.qmd and runs them in the
-# post's own environment, where the top-level assignments are the point -- they
-# leave the count tables behind for the chunks after it. Sourcing the file by
-# hand does the same thing, and WILL hit the network if the cache below is
-# missing.
+# This is a SCRIPT: knitr's `file:` chunk option pastes these lines into the
+# `nl-data` chunk of index.qmd and runs them in the post's own environment,
+# where the top-level assignments are the point -- they leave the count tables
+# behind for the chunks after it. Sourcing the file by hand does the same
+# thing, and WILL hit the network if the cache below is missing.
 #
 # One source per quantity:
 #   incidence   NKR-cijfers (IKNL), the public front end of the Netherlands
@@ -15,8 +12,8 @@
 #               colon, appendix and rectum separately, and for the
 #               gastrointestinal neuroendocrine tumours (NETs), which NKR
 #               counts as a group of their own; and by stage, for colon and
-#               rectum together and apart (blog: apart is not in the report)
-#   survival    NKR-cijfers again (blog: not in the report): relative survival
+#               rectum together and apart
+#   survival    NKR-cijfers again: relative survival
 #               of colon and rectum, together and apart, by 5-year period x
 #               NKR's age group x stage
 #   mortality   WHO Mortality Database, the Netherlands (4210): deaths by
@@ -69,15 +66,14 @@ stopifnot(
 # ---- where the extracts are kept ---------------------------------------------
 # Parquet, gzip: nanoparquet 0.5.0 accepts "zstd" and then writes the file
 # uncompressed.
-# blog: in the post's own folder -- Quarto runs the post from there -- rather
-# than in the report repository's data/netherlands.
+# In the post's own folder: Quarto runs the post from there.
 NL_DIR   <- "data"
 NL_CACHE <- list(
   nkr = c(nkr       = file.path(NL_DIR, "nkr_incidence.parquet"),
           net       = file.path(NL_DIR, "nkr_net.parquet"),
           published = file.path(NL_DIR, "nkr_published.parquet")),
-  # blog: stage and survival per site, each a source of its own, so fetching
-  # them did not re-fetch the incidence
+  # stage and survival per site, each a source of its own, so fetching them
+  # does not re-fetch the incidence
   stage = c(stage = file.path(NL_DIR, "nkr_stage_sites.parquet")),
   surv = c(survival = file.path(NL_DIR, "nkr_survival_sites_sexes.parquet")),
   who = c(deaths    = file.path(NL_DIR, "who_nl_deaths.parquet"),
@@ -117,7 +113,7 @@ nl_cached <- function(source, fetch) {
 
 # ---- NKR-cijfers ---------------------------------------------------------------
 # The site runs on an undocumented JSON API.
-# blog: found by reading the site's JavaScript bundle. Two endpoints, both POST:
+# Found by reading the site's JavaScript bundle. Two endpoints, both POST:
 # `filter-groups` lists every filter and its codes, `data` returns the cells.
 NKR_API <- "https://api.nkr-cijfers.iknl.nl/api"
 
@@ -314,7 +310,7 @@ nkr_fetch_groups <- function(groups, yrs) {
 
 # ---- stage --------------------------------------------------------------------
 # Colon and rectum together (NKR sums the two codes when both are in
-# aggregateBy), so the appendix is out, as in the main incidence; and, blog:
+# aggregateBy), so the appendix is out, as in the main incidence; and
 # colon and rectum apart. Together is asked for rather than added up from the
 # two: NKR hides a row by its own size, so the sum of two rows it shows can
 # be a row it would show, while either part alone is hidden. Per sex, because
@@ -333,10 +329,10 @@ NKR_STAGES <- c("stadium/0" = "0", "stadium/i" = "I", "stadium/ii" = "II",
 # year x sex x age group at once, roughly when that row holds 10 cases or fewer
 # -- and a hidden row comes back as "data/undisclosed" with no value. Those
 # cells are kept as NA rather than worked out from the totals.
-# blog: the post uses stage from 20-24 up, and fills in the hidden rows itself
+# The post uses stage from 20-24 up, and fills in the hidden rows itself
 # (the `stage` chunk of index.qmd).
 # The provisional year is not asked for; NKR discloses no stage for it.
-# blog: the sites, by their NKR codes and the codes of the incidence counts
+# The sites, by their NKR codes and the codes of the incidence counts
 # their stages must add up to.
 NKR_STAGE_SITES <- list(
   `Colon and rectum` = c("kankersoort/205310", "kankersoort/205330"),
@@ -413,7 +409,7 @@ fetch_nkr <- function() {
 }
 
 # ---- survival -----------------------------------------------------------------
-# blog: not in the report. Relative survival per site, as for stage (colon and
+# Relative survival per site, as for stage (colon and
 # rectum together, so the appendix is out as in the incidence; colon; rectum),
 # for both sexes and per sex, per 5-year period of diagnosis from 1990-94 (as
 # the post's age-specific rates) x age x stage. Both sexes is NKR's own figure,
@@ -466,7 +462,7 @@ nkr_fetch_survival <- function(site, sex) {
   }) |>
     purrr::list_rbind()
 
-  # blog: per site and sex the NKR hides some cells -- small groups, such as
+  # Per site and sex the NKR hides some cells -- small groups, such as
   # the rectum at 18-44, stage II, 2020-24 -- whole, at every year after
   # diagnosis; they are kept as NA, and the post decides what to do with them.
   valid <- cells$state == "data/valid"
@@ -490,7 +486,7 @@ nkr_fetch_survival <- function(site, sex) {
 }
 
 # ---- WHO: the Netherlands ------------------------------------------------------
-# blog: WHO's raw ICD-10 mortality files, cut down to one country.
+# WHO's raw ICD-10 mortality files, cut down to one country.
 WHO_BASE <- paste0("https://cdn.who.int/media/docs/default-source/",
                    "world-health-data-platform/mortality-raw-data")
 WHO_NL   <- "4210"
@@ -637,7 +633,7 @@ fetch_who_nl <- function() {
 # the people at that same age at the start and at the end of the year, which
 # is what a mid-year population by age is. With it, the Segi ASR of the NKR
 # counts reproduces the WSR NKR publishes to within 0.05% in every final year
-# (checked October 2026; blog: the check is redone in the post).
+# (checked October 2026; the check is redone in the post).
 # WHO's own Dutch population is this same series too, except around 2018-2020,
 # where its split by age departs from it by up to 18% -- so it is kept only for
 # that comparison.
@@ -730,8 +726,6 @@ stopifnot(
 # ---- the count tables, each count with its population ---------------------------
 # One row per year x sex x age group x code, rectangular, with `pop` repeated
 # across the codes of a cell.
-# blog: the report put these in the shape of the ICBP files, with a country and
-# jurisdiction column; one country needs neither.
 with_pop <- function(d) {
   out <- d |>
     dplyr::left_join(nl_cbs$cbs_pop, by = c("year", "sex", "agegrp")) |>

@@ -73,11 +73,10 @@ ua_handle <- function() curl::new_handle(
 APPENDIX <- "C181"   # the appendix, in the cases and in the deaths
 SEXES    <- c("Persons", "Men", "Women")
 
-# The figures follow the house style of a manuscript of mine on the same
-# question: Financial Times-like, one colour per outcome, grey for context, few
-# lines, and panel titles set like headings. The type is larger than in print,
-# for a figure read at the width of a blog column; TEXT is the size of the
-# labels drawn inside a figure, in mm.
+# The figures' house style: one colour per outcome, grey
+# for context, few lines, and panel titles set like headings. The type is
+# larger than in print, for a figure read at the width of a blog column; TEXT
+# is the size of the labels drawn inside a figure, in mm.
 FIG_FONT <- intersect(c("Liberation Sans", "Arial", "Helvetica"),
                       systemfonts::system_fonts()$family)[1]
 if (is.na(FIG_FONT)) FIG_FONT <- "sans"
@@ -234,10 +233,12 @@ Below, I plot the mortality and incidence series for early onset (20-49) and lat
 ```{r}
 #| label: eapc
 #| code-summary: "Code: fit the EAPCs and draw the trends figure"
-# The EAPC as in my report (and Rcan::csu_eapc): a straight line through the
-# log of the yearly rates over the last `n` years of a series, whose slope b
-# becomes a percentage change per year, 100 * (exp(b) - 1); the 95% interval
-# is b +/- 1.96 standard errors. A year with no cases has no log rate and is
+# The EAPC: a straight line through the log of the yearly rates over the last
+# `n` years of a series, whose slope b becomes a percentage change per year,
+# 100 * (exp(b) - 1). The 95% interval is b +/- t standard errors, t on the
+# fit's n - 2 degrees of freedom, as Joinpoint does; Rcan::csu_eapc uses 1.96,
+# which treats the residual SD as known and with 10 years is too narrow (t_8 =
+# 2.31). A year with no cases has no log rate and is
 # left out of the fit, and with fewer than three years left there is no fit.
 # `keys` are the columns that tell one series from another.
 WINDOWS <- c(`Past 10 years` = 10L, `Past 30 years` = 30L)
@@ -255,12 +256,14 @@ eapc <- function(d, n, keys = "sex") {
                return(tibble(eapc = NA_real_, low = NA_real_, up = NA_real_,
                              intercept = NA_real_, slope = NA_real_,
                              year_from = NA_real_, year_to = NA_real_))
-             m  <- summary(lm(log(rate) ~ year, data = x))$coefficients
+             fit <- lm(log(rate) ~ year, data = x)
+             m  <- summary(fit)$coefficients
              b  <- m["year", "Estimate"]
              se <- m["year", "Std. Error"]
+             crit <- qt(0.975, df.residual(fit))
              tibble(eapc = 100 * (exp(b) - 1),
-                    low  = 100 * (exp(b - qnorm(0.975) * se) - 1),
-                    up   = 100 * (exp(b + qnorm(0.975) * se) - 1),
+                    low  = 100 * (exp(b - crit * se) - 1),
+                    up   = 100 * (exp(b + crit * se) - 1),
                     intercept = m["(Intercept)", "Estimate"], slope = b,
                     year_from = min(x$year), year_to = max(x$year))
            })) |>
@@ -313,8 +316,8 @@ AXES <- trend |>
          k = left / right)
 
 # Annual rates as points joined by a pale line, the trend over the window as a
-# dashed line in a darker shade, and its EAPC at the line's end -- as in the
-# manuscript's time series. The EAPC label also names its series, in the colour
+# dashed line in a darker shade, and its EAPC at the line's end. The EAPC
+# label also names its series, in the colour
 # of that series' axis, so there is no legend to look up. The start of
 # screening is marked where it applies.
 # Years on the x axis: the decades, and in smaller type the first and last
@@ -519,6 +522,10 @@ tab_figures(list(names(WINDOWS), SEXES, SITES), fig_age_eapc)
 ```
 :::
 
+::: {style="font-size: 0.6em; color: #6B6560;"}
+EAPC calculations: fit a straight line through the logarithm of an age group's yearly rates over the window, then convert its slope $b$ to a change per year by $100 \times (e^{b} - 1)$%. The 95% confidence intervals (whiskers) are calculated by $b \pm t \times \mathrm{SE}(b)$, where $t$ comes from the $t$ distribution on the number of years minus 2, turned into percentages the same way. A year without a single case has no logarithm and is left out of the fit (hollow points). The number right of each row is the cases (or deaths) in the window.
+:::
+
 We see that over the past 30 years, colon and rectum cancer became more common in every early-onset age group. Over the past 10 years the picture is a bit noisier. In the colon, incidence rose in most early-onset age groups, but not at 30-34. For colon and rectum together several age groups were flat, 50-54 among them, while the slightly older screened age groups fell, most steeply from 60 on.
 
 ## Same age, different generations
@@ -530,7 +537,7 @@ Instead of plotting trends per age group and diagnosis, we can also inspect the 
 # Rates per age group in 5-year windows: a window sits at the middle of its
 # years, and an age group in it holds, on average, the people born that
 # window's middle minus the age group's middle -- 40-44 in 1990-94 is the people
-# born around 1950. The report's age-specific rates. The windows are counted
+# born around 1950. The windows are counted
 # back from the last year, so that every one holds five years: 1990-94 to
 # 2020-24 for the cases, and 2000-04 to 2020-24 for the deaths, which start in
 # 1996.
@@ -1004,7 +1011,7 @@ If more young people were looked at -- more colonoscopies for vague symptoms, mo
 #| label: stage
 #| code-summary: "Code: fill in the hidden stage counts, stage trends and their figure"
 # ---- stage, with the rows the NKR hides allocated ------------------------------
-# As in my report. The NKR hides a whole year x sex x age row of its stage
+# The NKR hides a whole year x sex x age row of its stage
 # table when the row holds about ten cases or fewer: always at 20-24, mostly
 # at 25-29, now and then at 30-34, never from 35 up. A hidden row's total is
 # known from the incidence counts, and is split across the stages in the
