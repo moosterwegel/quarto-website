@@ -7108,32 +7108,35 @@ font-style: inherit;">/</span> right)</span>
 <span id="cb4-82"></span>
 <span id="cb4-83"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># Annual rates as points joined by a pale line, the trend over the window as a</span></span>
+font-style: inherit;"># Annual rates as faint points, not joined, and the trend over the window as a</span></span>
 <span id="cb4-84"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># dashed line in a darker shade, and its EAPC at the line's end. The EAPC</span></span>
+font-style: inherit;"># full-strength dashed line in a darker shade of the same colour, so the trend</span></span>
 <span id="cb4-85"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># label also names its series, in the colour</span></span>
+font-style: inherit;"># stands out from the scatter around it, with its EAPC at the line's end. The EAPC</span></span>
 <span id="cb4-86"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># of that series' axis, so there is no legend to look up. The start of</span></span>
+font-style: inherit;"># label also names its series, in the colour</span></span>
 <span id="cb4-87"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># screening is marked where it applies.</span></span>
+font-style: inherit;"># of that series' axis, so there is no legend to look up. The start of</span></span>
 <span id="cb4-88"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># Years on the x axis: the decades, and in smaller type the first and last</span></span>
+font-style: inherit;"># screening is marked where it applies.</span></span>
 <span id="cb4-89"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># year of the window. A size per label is not officially supported by</span></span>
+font-style: inherit;"># Years on the x axis: the decades, and in smaller type the first and last</span></span>
 <span id="cb4-90"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;"># ggplot2, and warns, but works.</span></span>
+font-style: inherit;"># year of the window. A size per label is not officially supported by</span></span>
 <span id="cb4-91"><span class="co" style="color: #5E5E5E;
 background-color: null;
+font-style: inherit;"># ggplot2, and warns, but works.</span></span>
+<span id="cb4-92"><span class="co" style="color: #5E5E5E;
+background-color: null;
 font-style: inherit;"># In narrower panels, `gap` leaves out the decades that close to a window year.</span></span>
-<span id="cb4-92">window_years <span class="ot" style="color: #003B4F;
+<span id="cb4-93">window_years <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> \(window) <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7150,7 +7153,7 @@ background-color: null;
 font-style: inherit;">1</span>L, <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0</span>L)</span>
-<span id="cb4-93">trend_years  <span class="ot" style="color: #003B4F;
+<span id="cb4-94">trend_years  <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
 background-color: null;
@@ -7160,12 +7163,12 @@ background-color: null;
 font-style: inherit;">gap =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0</span>) {</span>
-<span id="cb4-94">  w <span class="ot" style="color: #003B4F;
+<span id="cb4-95">  w <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">window_years</span>(window)</span>
-<span id="cb4-95">  decades <span class="ot" style="color: #003B4F;
+<span id="cb4-96">  decades <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7178,7 +7181,7 @@ background-color: null;
 font-style: inherit;">$</span>year), <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">10</span>)</span>
-<span id="cb4-96">  <span class="fu" style="color: #4758AB;
+<span id="cb4-97">  <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">sort</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7193,15 +7196,15 @@ background-color: null;
 font-style: inherit;">-</span> w) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&gt;</span> gap)), w))</span>
-<span id="cb4-97">}</span>
-<span id="cb4-98"></span>
-<span id="cb4-99">fig_trends <span class="ot" style="color: #003B4F;
+<span id="cb4-98">}</span>
+<span id="cb4-99"></span>
+<span id="cb4-100">fig_trends <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">function</span>(window, sex, site) {</span>
-<span id="cb4-100">  panels <span class="ot" style="color: #003B4F;
+<span id="cb4-101">  panels <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7210,14 +7213,14 @@ background-color: null;
 font-style: inherit;">levels</span>(trend<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>band), \(b) {</span>
-<span id="cb4-101">    ax    <span class="ot" style="color: #003B4F;
+<span id="cb4-102">    ax    <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">filter</span>(AXES, band <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">==</span> b)</span>
-<span id="cb4-102">    on_ax <span class="ot" style="color: #003B4F;
+<span id="cb4-103">    on_ax <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> \(outcome, y) <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7230,12 +7233,12 @@ background-color: null;
 font-style: inherit;">*</span> ax<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>k, y)</span>
-<span id="cb4-103">    d   <span class="ot" style="color: #003B4F;
+<span id="cb4-104">    d   <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> trend <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-104">      <span class="fu" style="color: #4758AB;
+<span id="cb4-105">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">filter</span>(band <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -7250,14 +7253,14 @@ background-color: null;
 font-style: inherit;">!!</span>site) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-105">      <span class="fu" style="color: #4758AB;
+<span id="cb4-106">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">y =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">on_ax</span>(outcome, rate))</span>
-<span id="cb4-106">    fit <span class="ot" style="color: #003B4F;
+<span id="cb4-107">    fit <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> trend_fit <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -7278,12 +7281,12 @@ background-color: null;
 font-style: inherit;">==</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">!!</span>window)</span>
-<span id="cb4-107">    seg <span class="ot" style="color: #003B4F;
+<span id="cb4-108">    seg <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> fit <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-108">      <span class="fu" style="color: #4758AB;
+<span id="cb4-109">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
 background-color: null;
@@ -7298,12 +7301,12 @@ background-color: null;
 font-style: inherit;">25</span>))) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-109">      <span class="fu" style="color: #4758AB;
+<span id="cb4-110">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">unnest</span>(year) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-110">      <span class="fu" style="color: #4758AB;
+<span id="cb4-111">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
 background-color: null;
@@ -7316,12 +7319,12 @@ background-color: null;
 font-style: inherit;">+</span> slope <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> year)))</span>
-<span id="cb4-111">    lab <span class="ot" style="color: #003B4F;
+<span id="cb4-112">    lab <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> fit <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb4-112">      <span class="fu" style="color: #4758AB;
+<span id="cb4-113">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
 background-color: null;
@@ -7336,7 +7339,7 @@ background-color: null;
 font-style: inherit;">+</span> slope <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> year_to)),</span>
-<span id="cb4-113">             <span class="at" style="color: #657422;
+<span id="cb4-114">             <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">label =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7351,7 +7354,7 @@ background-color: null;
 font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"%+.1f%%/yr"</span>, eapc)))</span>
-<span id="cb4-114">    screen <span class="ot" style="color: #003B4F;
+<span id="cb4-115">    screen <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
 background-color: null;
@@ -7361,7 +7364,7 @@ background-color: null;
 font-style: inherit;">==</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"Later onset, 50-74"</span>)</span>
-<span id="cb4-115">      <span class="fu" style="color: #4758AB;
+<span id="cb4-116">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">list</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7378,12 +7381,12 @@ background-color: null;
 font-style: inherit;">linetype =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"dotted"</span>,</span>
-<span id="cb4-116">                      <span class="at" style="color: #657422;
+<span id="cb4-117">                      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">linewidth =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.45</span>),</span>
-<span id="cb4-117">           <span class="fu" style="color: #4758AB;
+<span id="cb4-118">           <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">annotate</span>(<span class="st" style="color: #20794D;
 background-color: null;
@@ -7404,7 +7407,7 @@ background-color: null;
 font-style: inherit;">\n</span><span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">(FIT, 55-75)"</span>,</span>
-<span id="cb4-118">                    <span class="at" style="color: #657422;
+<span id="cb4-119">                    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">hjust =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
@@ -7423,15 +7426,15 @@ background-color: null;
 font-style: inherit;">colour =</span> COL[[<span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"context"</span>]],</span>
-<span id="cb4-119">                    <span class="at" style="color: #657422;
+<span id="cb4-120">                    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">family =</span> FIG_FONT, <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">lineheight =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.95</span>))</span>
-<span id="cb4-120"></span>
-<span id="cb4-121">    <span class="fu" style="color: #4758AB;
+<span id="cb4-121"></span>
+<span id="cb4-122">    <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ggplot</span>(d, <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -7440,20 +7443,7 @@ background-color: null;
 font-style: inherit;">colour =</span> outcome)) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb4-122">      screen <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">+</span></span>
-<span id="cb4-123">      <span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">geom_line</span>(<span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">linewidth =</span> <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0.4</span>, <span class="at" style="color: #657422;
-background-color: null;
-font-style: inherit;">alpha =</span> <span class="fl" style="color: #AD0000;
-background-color: null;
-font-style: inherit;">0.35</span>) <span class="sc" style="color: #5E5E5E;
+<span id="cb4-123">      screen <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
 <span id="cb4-124">      <span class="fu" style="color: #4758AB;
@@ -7462,7 +7452,15 @@ font-style: inherit;">geom_point</span>(<span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">size =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">0.9</span>) <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">2.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stroke =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">alpha =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.45</span>) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
 <span id="cb4-125">      <span class="fu" style="color: #4758AB;
@@ -7481,7 +7479,7 @@ font-style: inherit;">" trend"</span>)), <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">linewidth =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">0.8</span>,</span>
+font-style: inherit;">1.25</span>,</span>
 <span id="cb4-126">                <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">linetype =</span> <span class="st" style="color: #20794D;
@@ -7593,13 +7591,11 @@ font-style: inherit;">`</span> <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">alpha</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
 font-style: inherit;">shade</span>(COL[[<span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"Incidence"</span>]]), <span class="fl" style="color: #AD0000;
+font-style: inherit;">"Incidence"</span>]], <span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">0.85</span>),</span>
+font-style: inherit;">0.25</span>),</span>
 <span id="cb4-136">                   <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">`</span><span class="at" style="color: #657422;
@@ -7610,13 +7606,11 @@ font-style: inherit;">`</span> <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">alpha</span>(<span class="fu" style="color: #4758AB;
-background-color: null;
 font-style: inherit;">shade</span>(COL[[<span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"Mortality"</span>]]), <span class="fl" style="color: #AD0000;
+font-style: inherit;">"Mortality"</span>]], <span class="fl" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">0.85</span>)),</span>
+font-style: inherit;">0.25</span>)),</span>
 <span id="cb4-137">        <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">guide =</span> <span class="st" style="color: #20794D;
@@ -15941,7 +15935,6 @@ font-style: inherit;">"mm"</span>))</span>
 <section id="so-is-early-onset-colorectal-cancer-really-rising-in-the-netherlands" class="level1">
 <h1>So, is early-onset colorectal cancer really rising in the Netherlands?</h1>
 <p>I would say so yes. Under 50, colon and rectum cancer has become more common by <strong>1.2%</strong> a year over the past 30 years and by <strong>1.0%</strong> a year over the past 10 – mostly in the colon, mostly at an advanced stage, and not because of neuroendocrine tumours, the appendix, screening, or more diagnosis of small tumours. This means that at the same age, people born since approximately 1960 have faced progressively higher colorectal cancer risk. Over 30 years deaths have not followed incidence, which improved survival can explain; their fall over the past 10 years, while survival stood still, seems a bit of a loose end.<sup>6</sup></p>
-<p><sup>7</sup>: In this data from the API, the age brackets and timeline across stage, survival, incidence/mortality did not always line up perfectly which could explain part of this loose end.</p>
 <p>After separating artefact from reality, the next step is to figure out what exposure is causing this. A rise in early-onset that is carried by birth cohorts, combined with cancer’s long induction period, points to something in how the generations born since the 1960s grew up. Did some harmful exposure suddenly become much more prevalent? In the <a href="https://ecce.iarc.who.int/">ECCE project</a>, we are following up on promising evidence from the mutational signatures found in the colon of these people. Stay tuned!</p>
 
 
@@ -15981,9 +15974,8 @@ Toes-Zoutendijk, Esther et al. 2017. <span>“Real-Time Monitoring of Results Du
 <li id="fn2"><p>CBS StatLine offers an “average population” by age (<em>gemiddelde bevolking</em>), which seems the obvious choice. But in that table CBS counts people by the age they reach during the year, which is half a year older than the age at diagnosis or death that the NKR and WHO count. Against those counts it shifts people into older age groups, and makes an age-standardised rate about 2% too low. I therefore instead use the mean of the population on 1 January of the year and on 1 January of the next year, at the same age.↩︎</p></li>
 <li id="fn3"><p>Leaving out the youngest and oldest ages is common in descriptive cancer epidemiology as under 20, colorectal cancer is very rare and from 75 on, the data tend to be less reliable (in some registries): older people with other illnesses are less often investigated down to a confirmed diagnosis, and their causes of death are harder to pin down. 50-74 also matches up with the ages that the Dutch screening programme invites (55-75).↩︎</p></li>
 <li id="fn4"><p>This is an upper bound as the NKR does not split its NET group by site (i.e.&nbsp;this includes the NETs of the stomach and small bowel too)↩︎</p></li>
-<li id="fn5"><p>Better imaging can move tumours from stage III to stage IV, by finding small metastases that used to go unnoticed. This may explain part of the rise in stage IV. However, this would explain the relative and not their absolute rise. An interested related phenomenom is the <a href="https://en.wikipedia.org/wiki/Will_Rogers_phenomenon">Will Rogers phenomenom</a> where the average of both groups increases when observations move between them.↩︎</p></li>
-<li id="fn6"><p>alt-explain↩︎</p></li>
-<li id="fn7"><p>alt-explain↩︎</p></li>
+<li id="fn5"><p>Better imaging can move tumours from stage III to stage IV, by finding small metastases that used to go unnoticed. This may explain part of the rise in stage IV. However, this would only explain the relative and not their absolute rise. An interested related phenomenon is the <a href="https://en.wikipedia.org/wiki/Will_Rogers_phenomenon">Will Rogers phenomenon</a> where the average of both groups increases when observations move between them.↩︎</p></li>
+<li id="fn6"><p>In this data from the API, the age brackets and timeline across stage, survival, incidence/mortality did not always line up perfectly which could explain part of this loose end.↩︎</p></li>
 </ol>
 </section><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{oosterwegel2026,
   author = {Oosterwegel, Max J.},

@@ -315,8 +315,9 @@ AXES <- trend |>
   mutate(left = map_dbl(Incidence, nice_top), right = map_dbl(2 * Mortality, nice_top),
          k = left / right)
 
-# Annual rates as points joined by a pale line, the trend over the window as a
-# dashed line in a darker shade, and its EAPC at the line's end. The EAPC
+# Annual rates as faint points, not joined, and the trend over the window as a
+# full-strength dashed line in a darker shade of the same colour, so the trend
+# stands out from the scatter around it, with its EAPC at the line's end. The EAPC
 # label also names its series, in the colour
 # of that series' axis, so there is no legend to look up. The start of
 # screening is marked where it applies.
@@ -355,9 +356,8 @@ fig_trends <- function(window, sex, site) {
 
     ggplot(d, aes(year, y, colour = outcome)) +
       screen +
-      geom_line(linewidth = 0.4, alpha = 0.35) +
-      geom_point(size = 0.9) +
-      geom_line(data = seg, aes(colour = str_c(outcome, " trend")), linewidth = 0.8,
+      geom_point(size = 2.5, stroke = 0, alpha = 0.45) +
+      geom_line(data = seg, aes(colour = str_c(outcome, " trend")), linewidth = 1.25,
                 linetype = "62", show.legend = FALSE) +
       # ggrepel: in the rectum the two labels can end at the same height
       ggrepel::geom_text_repel(data = lab, aes(label = label, colour = outcome), hjust = 0,
@@ -367,8 +367,8 @@ fig_trends <- function(window, sex, site) {
                                min.segment.length = Inf, box.padding = 0.15, seed = 1) +
       scale_colour_manual(
         values = c(COL[c("Incidence", "Mortality")],
-                   `Incidence trend` = alpha(shade(COL[["Incidence"]]), 0.85),
-                   `Mortality trend` = alpha(shade(COL[["Mortality"]]), 0.85)),
+                   `Incidence trend` = shade(COL[["Incidence"]], 0.25),
+                   `Mortality trend` = shade(COL[["Mortality"]], 0.25)),
         guide = "none") +
       scale_y_continuous(limits = c(0, ax$left), breaks = pretty(c(0, ax$left)),
                          expand = expansion(mult = c(0, 0.03)),
@@ -1005,7 +1005,7 @@ However, screening could still reach the under-55s indirectly, through more colo
 ## Is it more diagnosis?
 If more young people were looked at -- more colonoscopies for vague symptoms, more sensitive instruments, more awareness among doctors -- the extra tumours would be small and early: stage I, some stage II. A rise in advanced tumours is much harder to explain that way.[^imaging]
 
-[^imaging]: Better imaging can move tumours from stage III to stage IV, by finding small metastases that used to go unnoticed. This may explain part of the rise in stage IV. However, this would explain the relative and not their absolute rise. An interested related phenomenom is the [Will Rogers phenomenom](https://en.wikipedia.org/wiki/Will_Rogers_phenomenon) where the average of both groups increases when observations move between them.
+[^imaging]: Better imaging can move tumours from stage III to stage IV, by finding small metastases that used to go unnoticed. This may explain part of the rise in stage IV. However, this would only explain the relative and not their absolute rise. An interested related phenomenon is the [Will Rogers phenomenon](https://en.wikipedia.org/wiki/Will_Rogers_phenomenon) where the average of both groups increases when observations move between them.
 
 ```{r}
 #| label: stage
@@ -1355,9 +1355,9 @@ The same sum does not work as well for the past 10 years. Incidence rose by **`r
 - **COVID-19.** Screening [paused for several months in 2020](https://www.rivm.nl/nieuws/minder-mensen-ontvingen-in-2020-uitnodiging-voor-bevolkingsonderzoeken-naar-kanker), and both windows include that year. Under 50, the rate in 2020 does not stand out ([trends figure](#trends-figure)).
 
 # So, is early-onset colorectal cancer really rising in the Netherlands?
-I would say so yes. Under 50, colon and rectum cancer has become more common by **`r fmt(trend_eapc("Incidence", "Early onset, 20-49", "Past 30 years")$eapc)`%** a year over the past 30 years and by **`r fmt(trend_eapc("Incidence", "Early onset, 20-49", "Past 10 years")$eapc)`%** a year over the past 10 -- mostly in the colon, mostly at an advanced stage, and not because of neuroendocrine tumours, the appendix, screening, or more diagnosis of small tumours. This means that at the same age, people born since approximately 1960 have faced progressively higher colorectal cancer risk. Over 30 years deaths have not followed incidence, which improved survival can explain; their fall over the past 10 years, while survival stood still, seems a bit of a loose end.^[alt-explain] 
+I would say so yes. Under 50, colon and rectum cancer has become more common by **`r fmt(trend_eapc("Incidence", "Early onset, 20-49", "Past 30 years")$eapc)`%** a year over the past 30 years and by **`r fmt(trend_eapc("Incidence", "Early onset, 20-49", "Past 10 years")$eapc)`%** a year over the past 10 -- mostly in the colon, mostly at an advanced stage, and not because of neuroendocrine tumours, the appendix, screening, or more diagnosis of small tumours. This means that at the same age, people born since approximately 1960 have faced progressively higher colorectal cancer risk. Over 30 years deaths have not followed incidence, which improved survival can explain; their fall over the past 10 years, while survival stood still, seems a bit of a loose end.[^alt-explain]
 
-^[alt-explain]: In this data from the API, the age brackets and timeline across stage, survival, incidence/mortality did not always line up perfectly which could explain part of this loose end.
+[^alt-explain]: In this data from the API, the age brackets and timeline across stage, survival, incidence/mortality did not always line up perfectly which could explain part of this loose end.
 
 After separating artefact from reality, the next step is to figure out what exposure is causing this. A rise in early-onset that is carried by birth cohorts, combined with cancer's long induction period, points to something in how the generations born since the 1960s grew up. Did some harmful exposure suddenly become much more prevalent? In the [ECCE project](https://ecce.iarc.who.int/), we are following up on promising evidence from the mutational signatures found in the colon of these people. Stay tuned!
 
